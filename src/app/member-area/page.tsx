@@ -188,22 +188,40 @@ const WalletBalances: React.FC<walletAddresssProps> = ({ walletAddress }) => {
             
             <div className="mt-8 flex flex-col justify-items-left">
                 <div className="flex mt-3 gap-2 md:gap-2">
-                    <Image width={24} height={24} className="h-6 w-6 rounded-full mr-1" src="https://polygonscan.com/token/images/polygonmatic_new_32.png" alt="POL Token" />
-                    เหรียญ POL: {walletAddress? 
-                    new Intl.NumberFormat("en-US",{minimumFractionDigits: 2,maximumFractionDigits: 6,})
-                    .format(Number(toEther(polBalance || 0n))): "0"}
+                    <img 
+                        width={24} 
+                        height={24} 
+                        className="h-6 w-6 rounded-full mr-1" 
+                        src="https://polygonscan.com/token/images/polygonmatic_new_32.png" 
+                        alt="POL Token" 
+                    />
+                    เหรียญ POL: {walletAddress ? 
+                        new Intl.NumberFormat("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 6,
+                        }).format(Number(toEther(polBalance || 0n))) : "0"}
                 </div>
                 <div className="flex mt-3 gap-2 md:gap-2">
-                    <Image width={24} height={24} className="h-6 w-6 rounded-full mr-1" src="https://ipfs.io/ipfs/QmSLo5e3PSBWgF3wysabPzsBjoRLngrFoVNrGwgL3vm2Zn/KTDFI_600x600.png" alt="KTDFI Token" />
-                    เหรียญ KTDFI: {walletAddress ? (Number(ktdfiBalance) / 1e18).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00"}
+                    <img 
+                        width={24}
+                        height={24}
+                        className="h-6 w-6 rounded-full mr-1"
+                        src="https://ipfs.io/ipfs/QmSLo5e3PSBWgF3wysabPzsBjoRLngrFoVNrGwgL3vm2Zn/KTDFI_600x600.png"
+                        alt="KTDFI Token"
+                    />
+                    เหรียญ KTDFI: {walletAddress ?
+                        (Number(ktdfiBalance) / 1e18).toLocaleString(undefined, { 
+                        minimumFractionDigits: 2, 
+                        maximumFractionDigits: 2 
+                        }) : "0.00"}
                 </div>
 
                 <div className="flex mt-3 gap-2 md:gap-2">
-                    <Image width={24} height={24} className="h-6 w-6 rounded-full mr-1" src="https://polygonscan.com/token/images/centre-usdc_32.png" alt="USDC Token" />
+                    <img width={24} height={24} className="h-6 w-6 rounded-full mr-1" src="https://polygonscan.com/token/images/centre-usdc_32.png" alt="USDC Token" />
                     เหรียญ USDC: {walletAddress ? (Number(usdcBalance) / 1_000_000).toFixed(2) : "0"}
                 </div>                
                 <div className="flex mt-3 gap-2 md:gap-2">
-                    <Image width={24} height={24} className="h-6 w-6 rounded-full mr-1" src="https://polygonscan.com/token/images/tether_32.png" alt="USDT Token" />
+                    <img width={24} height={24} className="h-6 w-6 rounded-full mr-1" src="https://polygonscan.com/token/images/tether_32.png" alt="USDT Token" />
                     เหรียญ USDT: {walletAddress ? (Number(usdtBalance) / 1_000_000).toFixed(2) : "0"}
                 </div>
                 
