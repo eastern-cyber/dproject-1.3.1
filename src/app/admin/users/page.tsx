@@ -311,16 +311,16 @@ export default function AdminDashboard() {
                 <thead>
                   <tr className="bg-gray-50 dark:bg-gray-700">
                     <th 
-                      className="px-4 py-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                      className="px-4 py-2 text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
                       onClick={() => handleSort('id')}
                     >
                       ID {sortField === 'id' && (sortDirection === 'asc' ? '↑' : '↓')}
                     </th>
                     <th 
-                      className="px-4 py-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                      className="px-4 py-2 text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
                       onClick={() => handleSort('user_id')}
                     >
-                      User ID {sortField === 'user_id' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      User ID <br />Wallet Address {sortField === 'user_id' && (sortDirection === 'asc' ? '↑' : '↓')}
                     </th>
                     <th 
                       className="px-4 py-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
@@ -335,7 +335,7 @@ export default function AdminDashboard() {
                       Name {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
                     </th>
                     <th 
-                      className="px-4 py-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                      className="items-center px-4 py-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
                       onClick={() => handleSort('token_id')}
                     >
                       Token ID {sortField === 'token_id' && (sortDirection === 'asc' ? '↑' : '↓')}
@@ -358,7 +358,6 @@ export default function AdminDashboard() {
                     >
                       Created {sortField === 'created_at' && (sortDirection === 'asc' ? '↑' : '↓')}
                     </th>
-                    <th className="px-4 py-2 text-left">Actions</th>
                   </tr>
                   
                   {/* Sub-header row for Plan A and Plan B details */}
@@ -376,14 +375,21 @@ export default function AdminDashboard() {
                     <th className="px-2 py-1 text-left text-xs font-medium text-gray-600 dark:text-gray-300">Rate</th>
                     <th className="px-2 py-1 text-left text-xs font-medium text-gray-600 dark:text-gray-300">Date</th>
                     
-                    {/* Empty cells for remaining columns */}
-                    <th colSpan={2} className="px-4 py-2"></th>
+                    {/* Empty cell for remaining column */}
+                    <th className="px-4 py-2"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedUsers.map((user) => (
                     <tr key={user.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-700 dark:border-gray-600">
-                      <td className="px-4 py-2 font-mono text-sm">{user.id}</td>
+                      <td className="px-4 py-2">
+                        <button
+                          onClick={() => setSelectedUser(user)}
+                          className="font-mono text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                        >
+                          {user.id}
+                        </button>
+                      </td>
                       <td className="px-4 py-2 font-mono text-sm">{user.user_id}</td>
                       <td className="px-4 py-2">{user.email || 'N/A'}</td>
                       <td className="px-4 py-2">{user.name || 'N/A'}</td>
@@ -416,14 +422,6 @@ export default function AdminDashboard() {
                       
                       <td className="px-4 py-2">
                         {new Date(user.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-2">
-                        <button
-                          onClick={() => setSelectedUser(user)}
-                          className="text-blue-600 dark:text-blue-400 hover:underline text-sm cursor-pointer"
-                        >
-                          View Details
-                        </button>
                       </td>
                     </tr>
                   ))}
