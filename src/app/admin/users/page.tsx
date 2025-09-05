@@ -317,10 +317,10 @@ export default function AdminDashboard() {
                       ID {sortField === 'id' && (sortDirection === 'asc' ? '↑' : '↓')}
                     </th>
                     <th 
-                      className="px-4 py-2 text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                      className="px-4 py-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
                       onClick={() => handleSort('user_id')}
                     >
-                      User ID <br />Wallet Address {sortField === 'user_id' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      User ID <br />&#9655;Wallet Address {sortField === 'user_id' && (sortDirection === 'asc' ? '↑' : '↓')}
                     </th>
                     <th 
                       className="px-4 py-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
@@ -335,7 +335,7 @@ export default function AdminDashboard() {
                       Name {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
                     </th>
                     <th 
-                      className="items-center px-4 py-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                      className="px-4 py-2 text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
                       onClick={() => handleSort('token_id')}
                     >
                       Token ID {sortField === 'token_id' && (sortDirection === 'asc' ? '↑' : '↓')}
@@ -343,12 +343,12 @@ export default function AdminDashboard() {
                     <th className="px-4 py-2 text-left">Referrer</th>
                     
                     {/* Plan A Header with Sub-columns */}
-                    <th colSpan={3} className="px-4 py-2 text-left bg-gray-100 dark:bg-gray-600">
+                    <th colSpan={3} className="px-4 py-2 text-center bg-gray-100 dark:bg-gray-600">
                       Plan A
                     </th>
                     
                     {/* Plan B Header with Sub-columns */}
-                    <th colSpan={3} className="px-4 py-2 text-left bg-gray-100 dark:bg-gray-600">
+                    <th colSpan={3} className="px-4 py-2 text-center bg-gray-100 dark:bg-gray-600">
                       Plan B
                     </th>
                     
