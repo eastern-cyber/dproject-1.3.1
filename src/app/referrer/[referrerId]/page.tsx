@@ -8,23 +8,11 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Footer from "@/components/Footer";
 
-// Define proper interfaces for the data structure
-interface UserData {
-  userId?: string;
-  walletAddress?: string;
-  email?: string;
-  userEmail?: string;
-  name?: string;
-  userName?: string;
-  fullName?: string;
-  tokenId?: string;
-  nftTokenId?: string;
-}
-
 interface ReferrerData {
+  user_id?: string;
   email?: string;
   name?: string;
-  tokenId?: string;
+  token_id?: string;
 }
 
 export default function ReferrerDetails({ params }: { params: Promise<{ referrerId: string }> }) {
@@ -35,7 +23,6 @@ export default function ReferrerDetails({ params }: { params: Promise<{ referrer
     const router = useRouter();
 
     useEffect(() => {
-        // Resolve the async params
         const resolveParams = async () => {
             const resolved = await params;
             setResolvedParams(resolved);
@@ -50,53 +37,26 @@ export default function ReferrerDetails({ params }: { params: Promise<{ referrer
             try {
                 setLoading(true);
                 setError(null);
-                const response = await fetch("https://raw.githubusercontent.com/eastern-cyber/dproject-admin-1.0.2/main/public/dProjectUsers.json");
+                
+                const response = await fetch(`/api/referrer/${resolvedParams.referrerId}`);
                 
                 if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error("ไม่พบข้อมูลผู้แนะนำ");
+                    }
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
                 const data = await response.json();
                 
-                // Try different possible structures - adjust based on actual structure
-                let referrer: UserData | undefined;
-                
-                // Option 1: If data is an array directly
-                if (Array.isArray(data)) {
-                    referrer = data.find((item: UserData) => 
-                        item.userId?.toLowerCase() === resolvedParams.referrerId.toLowerCase() ||
-                        item.walletAddress?.toLowerCase() === resolvedParams.referrerId.toLowerCase()
-                    );
-                } 
-                // Option 2: If data has a users property that contains the array
-                else if (data.users && Array.isArray(data.users)) {
-                    referrer = data.users.find((item: UserData) => 
-                        item.userId?.toLowerCase() === resolvedParams.referrerId.toLowerCase() ||
-                        item.walletAddress?.toLowerCase() === resolvedParams.referrerId.toLowerCase()
-                    );
-                }
-                // Option 3: If data has a different structure
-                else if (typeof data === 'object') {
-                    // Try to find the user by ID in any nested structure
-                    referrer = Object.values(data).find((item: unknown) => 
-                        item && typeof item === 'object' && 
-                        ((item as UserData).userId?.toLowerCase() === resolvedParams.referrerId.toLowerCase() ||
-                         (item as UserData).walletAddress?.toLowerCase() === resolvedParams.referrerId.toLowerCase())
-                    ) as UserData;
-                }
-
-                if (referrer) {
-                    setReferrerData({
-                        email: referrer.email || referrer.userEmail || "N/A",
-                        name: referrer.name || referrer.userName || referrer.fullName || "N/A",
-                        tokenId: referrer.tokenId || referrer.nftTokenId || "N/A"
-                    });
+                if (data.error) {
+                    setError(data.error);
                 } else {
-                    setError("ไม่พบข้อมูลผู้แนะนำ");
+                    setReferrerData(data);
                 }
             } catch (error) {
                 console.error("Error fetching referrer data:", error);
-                setError("เกิดข้อผิดพลาดในการโหลดข้อมูล");
+                setError(error instanceof Error ? error.message : "เกิดข้อผิดพลาดในการโหลดข้อมูล");
             } finally {
                 setLoading(false);
             }
@@ -109,16 +69,13 @@ export default function ReferrerDetails({ params }: { params: Promise<{ referrer
 
     const navigateToConfirmPage = () => {
         const data = {
-            var1: resolvedParams.referrerId || "N/A", // Referrer ID from params
-            var2: referrerData?.email || "N/A", // Email from referrerData
-            var3: referrerData?.name || "N/A", // Name from referrerData
-            var4: referrerData?.tokenId || "N/A", // Token ID from referrerData
+            var1: resolvedParams.referrerId || "N/A",
+            var2: referrerData?.email || "N/A",
+            var3: referrerData?.name || "N/A",
+            var4: referrerData?.token_id || "N/A",
         };
 
-        // Store data in sessionStorage before navigation
         sessionStorage.setItem("mintingsData", JSON.stringify(data));
-
-        // Navigate to confirmation page instead of minting page
         router.push("/referrer/confirm");
     };
 
@@ -162,7 +119,7 @@ export default function ReferrerDetails({ params }: { params: Promise<{ referrer
                                 <b>ชื่อ:</b> {referrerData.name}
                             </p>
                             <p className="text-lg text-red-600 mt-1">
-                                <b>Token ID: {referrerData.tokenId} </b>
+                                <b>Token ID: {referrerData.token_id} </b>
                             </p>
                         </div>
                     ) : (
@@ -178,12 +135,11 @@ export default function ReferrerDetails({ params }: { params: Promise<{ referrer
                     </div>
                 </div>
                 
-                {!loading && !error && (
+                {!loading && !error && referrerData && (
                     <div className="flex flex-col items-center mb-6">
                         <button 
                             onClick={navigateToConfirmPage} 
                             className="flex flex-col mt-1 border border-zinc-100 px-4 py-3 rounded-lg bg-red-700 hover:bg-zinc-800 transition-colors hover:border-zinc-400"
-                            disabled={!referrerData}
                         >
                             ดำเนินการต่อ
                         </button>
