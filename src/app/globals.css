@@ -22,7 +22,7 @@
 @layer base {
     body {
         @apply text-neutral-200;
-        background-color: #220040;
+        background-color: #110022;
     }
 }
 
@@ -35,7 +35,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
+    --background: #110022;
     --foreground: #ededed;
   }
 }

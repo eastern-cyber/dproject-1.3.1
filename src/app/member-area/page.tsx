@@ -248,17 +248,17 @@ const WalletBalances: React.FC<walletAddresssProps> = ({ walletAddress }) => {
                     </div>
                     <div className="flex flex-col justify-center items-center w-[300px]">
                         <Link 
-                            className=" mb-8 border border-zinc-500 px-4 py-3 rounded-lg hover:bg-red-600 hover:text-yellow-200 hover:border-yellow-300"
+                            className=" mb-8 border border-zinc-500 px-4 py-3 rounded-lg hover:bg-[#680000] hover:text-yellow-200 hover:border-yellow-300"
                             href="/member-area/check-user">
                             <p className="text-center text-[19px]">ตรวจสอบรายละเอียดสมาชิก</p>
                         </Link>
                         <Link 
-                            className="mb-8 border border-zinc-500 px-4 py-3 rounded-lg hover:bg-red-600 hover:text-yellow-200 hover:border-yellow-300" 
+                            className="mb-8 border border-zinc-500 px-4 py-3 rounded-lg hover:bg-[#680000] hover:text-yellow-200 hover:border-yellow-300" 
                             href="http://www.dpjdd.com/">
                             <p className="text-center text-[19px]">ตรวจสอบส่วนแบ่งรายได้</p>
                         </Link>
                         <Link 
-                            className="border border-zinc-500 px-4 py-3 rounded-lg hover:bg-red-600 hover:text-yellow-200 hover:border-yellow-300"
+                            className="border border-zinc-500 px-4 py-3 rounded-lg hover:bg-[#680000] hover:text-yellow-200 hover:border-yellow-300"
                             href="/premium-area">
                             <p className="text-center text-[19px]">เข้าสู่พื้นที่สมาชิกพรีเมี่ยม</p>
                         </Link>

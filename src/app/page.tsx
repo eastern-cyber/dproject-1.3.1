@@ -56,7 +56,7 @@ export default function Home() {
                 <p className="mt-5 w-full">
                   <Link 
                     href="/member-area"
-                    className="flex flex-col border bg-zinc-800 border-zinc-500 px-4 py-3 rounded-lg hover:bg-red-600 transition-colors hover:border-zinc-300 w-full text-center"
+                    className="flex flex-col border bg-zinc-800 border-zinc-500 px-4 py-3 rounded-lg hover:bg-[#6890000] transition-colors hover:border-zinc-300 w-full text-center"
                   >
                     <p className="text-lg break-words">เข้าสู่พื้นที่สมาชิก</p>
                   </Link>
