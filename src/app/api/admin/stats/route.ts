@@ -1,3 +1,5 @@
+// src/app/api/admin/stats/route.ts
+
 import { NextResponse } from 'next/server';
 import sql from '@/lib/db';
 
@@ -10,21 +12,37 @@ export async function GET() {
   }
 
   try {
-    const totalUsers = await sql`SELECT COUNT(*) FROM users`;
-    const todayUsers = await sql`
-      SELECT COUNT(*) FROM users 
-      WHERE created_at::date = CURRENT_DATE
+    // Get total number of users
+    const totalUsersResult = await sql`
+      SELECT COUNT(*) as count FROM users
     `;
-    const yesterdayUsers = await sql`
-      SELECT COUNT(*) FROM users 
-      WHERE created_at::date = CURRENT_DATE - INTERVAL '1 day'
+    const total = totalUsersResult[0]?.count || 0;
+
+    // Get total POL from plan_a and plan_b
+    const polResult = await sql`
+      SELECT 
+        COALESCE(SUM((plan_a->>'POL')::numeric), 0) + 
+        COALESCE(SUM((plan_b->>'POL')::numeric), 0) as total_pol
+      FROM users
     `;
+    const totalPOL = polResult[0]?.total_pol || 0;
+
+    // Get average rate from plan_a and plan_b
+    const rateResult = await sql`
+      SELECT 
+        AVG(rate) as avg_rate
+      FROM (
+        SELECT (plan_a->>'rateTHBPOL')::numeric as rate FROM users WHERE plan_a->>'rateTHBPOL' IS NOT NULL
+        UNION ALL
+        SELECT (plan_b->>'rateTHBPOL')::numeric as rate FROM users WHERE plan_b->>'rateTHBPOL' IS NOT NULL
+      ) rates
+    `;
+    const avgRate = rateResult[0]?.avg_rate || 0;
 
     return NextResponse.json({
-      total: parseInt(totalUsers[0].count),
-      today: parseInt(todayUsers[0].count),
-      yesterday: parseInt(yesterdayUsers[0].count),
-      newUsers: parseInt(todayUsers[0].count) - parseInt(yesterdayUsers[0].count)
+      total,
+      totalPOL: parseFloat(totalPOL),
+      avgRate: parseFloat(avgRate)
     });
   } catch (error) {
     console.error('Error fetching stats:', error);
