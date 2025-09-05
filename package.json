@@ -19,6 +19,7 @@
     "import-dproject-users": "node import-dproject-users.js"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.1",
     "@thirdweb-dev/sdk": "^4.0.99",
     "axios": "^1.11.0",
     "chart.js": "^4.5.0",
