@@ -4,10 +4,13 @@ import sql from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { referrerId: string } }
+  { params }: { params: Promise<{ referrerId: string }> }
 ) {
   try {
-    const { referrerId } = params;
+    // Extract referrerId from URL path
+    const url = new URL(request.url);
+    const pathParts = url.pathname.split('/');
+    const referrerId = pathParts[pathParts.length - 1];
 
     if (!sql) {
       return NextResponse.json(
