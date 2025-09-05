@@ -1,14 +1,30 @@
+// src/app/api/health/route.ts
 import { NextResponse } from 'next/server';
-import { checkDatabaseHealth } from '@/lib/db';
+import sql from '@/lib/db';
 
 export async function GET() {
   try {
-    const isHealthy = await checkDatabaseHealth();
+    let isHealthy = false;
+    let databaseStatus = 'disconnected';
     
+    if (sql) {
+      try {
+        // Test the database connection
+        await sql`SELECT 1`;
+        isHealthy = true;
+        databaseStatus = 'connected';
+      } catch (dbError) {
+        console.error('Database connection test failed:', dbError);
+        databaseStatus = 'error';
+      }
+    } else {
+      databaseStatus = 'not-configured';
+    }
+
     return NextResponse.json({ 
       status: isHealthy ? 'healthy' : 'unhealthy', 
       timestamp: new Date().toISOString(),
-      database: isHealthy ? 'connected' : 'disconnected',
+      database: databaseStatus,
       message: isHealthy ? 'Database connection successful' : 'Database connection failed or not configured'
     });
   } catch (error) {
