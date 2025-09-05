@@ -26,23 +26,37 @@ type UserData = {
   var4: string;
 };
 
-type MemberUser = {
-  userId?: string;
-  walletAddress?: string;
-  referrerId?: string;
-  email?: string;
-  name?: string;
-  tokenId?: number;
-  planA?: {
-    dateTime: string;
-    POL: string;
-    rateTHBPOL: string;
-  };
+type TransactionStatus = {
+  firstTransaction: boolean;
+  secondTransaction: boolean;
+  error?: string;
+};
+
+// Add this type definition near the top of the file, after the existing types
+type PlanAData = {
+  dateTime: string;
+  POL: string;
+  rateTHBPOL: string;
+  seventyPOL: string;
+  thirtyPOL: string;
+  seventyTxHash: string;
+  thirtyTxHash: string;
+  linkIPFS: string;
+};
+
+type DatabaseUserData = {
+  user_id: string;
+  referrer_id: string;
+  plan_a: PlanAData;
 };
 
 const ConfirmPage = () => {
   // Tracking transaction completion
   const [isTransactionComplete, setIsTransactionComplete] = useState(false);
+  const [transactionStatus, setTransactionStatus] = useState<TransactionStatus>({
+    firstTransaction: false,
+    secondTransaction: false
+  });
   const [ipfsHash, setIpfsHash] = useState<string | null>(null);
 
   const [data, setData] = useState<UserData | null>(null);
@@ -56,45 +70,6 @@ const ConfirmPage = () => {
   const [isMember, setIsMember] = useState(false);
   const [loadingMembership, setLoadingMembership] = useState(false);
   const account = useActiveAccount();
-
-  // Function to test GitHub connection
-  const testConnection = async () => {
-    try {
-      const response = await fetch('/api/github/test');
-      const result = await response.json();
-      console.log('GitHub connection test result:', result.success);
-    } catch (error) {
-      console.error('GitHub connection test failed:', error);
-    }
-  };
-
-  // Function to add user to GitHub via API route
-  const addUserToGitHub = async (userData: MemberUser) => {
-    try {
-      const response = await fetch('/api/github/add-user', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-      });
-
-      if (!response.ok) {
-        throw new Error(`GitHub API error: ${response.status}`);
-      }
-
-      const result = await response.json();
-      return result;
-    } catch (error) {
-      console.error('Error adding user to GitHub:', error);
-      throw error;
-    }
-  };
-
-  // Test GitHub connection on component mount
-  useEffect(() => {
-    testConnection();
-  }, []);
 
   // Fetch wallet balance when account changes
   useEffect(() => {
@@ -173,7 +148,7 @@ const ConfirmPage = () => {
     }
   }, []);
 
-  // Check membership status with new JSON structure
+  // Check membership status from PostgreSQL
   useEffect(() => {
     const checkMembership = async () => {
       if (!account?.address) {
@@ -183,31 +158,11 @@ const ConfirmPage = () => {
 
       setLoadingMembership(true);
       try {
-        const response = await fetch(
-          "https://raw.githubusercontent.com/eastern-cyber/dproject-admin-1.0.2/main/public/dProjectUsers.json"
-        );
+        const response = await fetch(`/api/check-membership?walletAddress=${account.address}`);
         if (!response.ok) throw new Error("Failed to fetch membership data");
         
-        const data = await response.json();
-        
-        let userList: MemberUser[] = [];
-        
-        if (Array.isArray(data)) {
-          userList = data;
-        } else if (data.users && Array.isArray(data.users)) {
-          userList = data.users;
-        } else if (typeof data === 'object' && data !== null) {
-          userList = Object.values(data).filter((item): item is MemberUser => 
-            item !== null && typeof item === 'object'
-          );
-        }
-
-        const memberExists = userList.some((user) => {
-          const userIdentifier = user.userId || user.walletAddress;
-          return userIdentifier && userIdentifier.toLowerCase() === account.address.toLowerCase();
-        });
-        
-        setIsMember(memberExists);
+        const result = await response.json();
+        setIsMember(result.isMember);
       } catch (error) {
         console.error("Error checking membership:", error);
         setIsMember(false);
@@ -252,20 +207,33 @@ const ConfirmPage = () => {
     }
   };
 
-  const handleConfirmTransaction = async () => {
-    if (!account || !adjustedExchangeRate || !data?.var1) return;
-    
-    setIsProcessing(true);
+  // Add user to PostgreSQL database
+  // Update the addUserToDatabase function to accept the new type
+const addUserToDatabase = async (userData: DatabaseUserData) => {
+  try {
+    const response = await fetch('/api/add-user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Database error: ${response.status}`);
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error adding user to database:', error);
+    throw error;
+  }
+};
+
+  const executeTransaction = async (to: string, amountWei: bigint) => {
     try {
-      const totalPolAmount = calculatePolAmount();
-      if (!totalPolAmount) throw new Error("Unable to calculate POL amount");
-
-      const totalAmountWei = toWei(totalPolAmount);
-      const seventyPercentWei = BigInt(Math.floor(Number(totalAmountWei) * 0.7));
-      const thirtyPercentWei = BigInt(totalAmountWei) - seventyPercentWei;
-
-      // First transaction: 70% to fixed recipient
-      const transaction1 = prepareContractCall({
+      const transaction = prepareContractCall({
         contract: getContract({
           client,
           chain: defineChain(polygon),
@@ -281,127 +249,142 @@ const ConfirmPage = () => {
           outputs: [{ type: "bool" }],
           stateMutability: "payable"
         },
-        params: [RECIPIENT_ADDRESS, seventyPercentWei],
-        value: seventyPercentWei
+        params: [to, amountWei],
+        value: amountWei
       });
 
-      // Second transaction: 30% to referrer
-      const transaction2 = prepareContractCall({
-        contract: getContract({
-          client,
-          chain: defineChain(polygon),
-          address: "0x0000000000000000000000000000000000001010"
-        }),
-        method: {
-          type: "function",
-          name: "transfer",
-          inputs: [
-            { type: "address", name: "to" },
-            { type: "uint256", name: "value" }
-          ],
-          outputs: [{ type: "bool" }],
-          stateMutability: "payable"
-        },
-        params: [data.var1, thirtyPercentWei],
-        value: thirtyPercentWei
+      const { transactionHash } = await sendTransaction({
+        transaction,
+        account: account!
       });
 
-      // Execute transactions sequentially
-      const { transactionHash: txHash1 } = await sendTransaction({
-        transaction: transaction1,
-        account: account
-      });
-
-      const { transactionHash: txHash2 } = await sendTransaction({
-        transaction: transaction2,
-        account: account
-      });
-
-      // FIXED: Get current time in Bangkok timezone (UTC+7) correctly
-      const now = new Date();
-      // Create Bangkok time by using toLocaleString with timeZone option
-      const formattedDate = now.toLocaleString('en-GB', {
-        timeZone: 'Asia/Bangkok',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      }).replace(',', ''); // Remove comma between date and time
-
-      const report = {
-        senderAddress: account.address,
-        dateTime: formattedDate,
-        timezone: "Asia/Bangkok (UTC+7)",
-        referrer: data.var1,
-        currentExchangeRate: exchangeRate,
-        adjustedExchangeRate: adjustedExchangeRate,
-        exchangeRateBuffer: EXCHANGE_RATE_BUFFER,
-        transactions: [
-          {
-            recipient: RECIPIENT_ADDRESS,
-            amountPOL: (Number(seventyPercentWei) / 10**18).toFixed(4),
-            amountTHB: (MEMBERSHIP_FEE_THB * 0.7).toFixed(2),
-            transactionHash: txHash1
-          },
-          {
-            recipient: data.var1,
-            amountPOL: (Number(thirtyPercentWei) / 10**18).toFixed(4),
-            amountTHB: (MEMBERSHIP_FEE_THB * 0.3).toFixed(2),
-            transactionHash: txHash2
-          }
-        ],
-        totalAmountPOL: totalPolAmount,
-        totalAmountTHB: MEMBERSHIP_FEE_THB
-      };
-
-      // After successful transactions, add user to GitHub
-      try {
-        const newUser = {
-          userId: account.address,
-          referrerId: data.var1,
-          email: data.var2 || "",
-          name: data.var3 || "",
-          // Let API handle tokenId assignment
-          planA: {
-            dateTime: formattedDate,
-            POL: totalPolAmount,
-            rateTHBPOL: adjustedExchangeRate.toFixed(2)
-          }
-        };
-
-        const result = await addUserToGitHub(newUser);
-        console.log('User added to GitHub successfully with tokenId:', result.tokenId);
-        
-        // Update the displayed tokenId if needed
-        if (result.tokenId) {
-          // You might want to update your UI to show the actual tokenId
-          console.log('Assigned tokenId:', result.tokenId);
-        }
-      } catch (githubError) {
-        console.warn('GitHub update failed, continuing without GitHub update:', githubError);
-        // Continue without throwing error
-      }
-
-      // Store report in IPFS instead of downloading locally
-      const ipfsHash = await storeReportInIPFS(report);
-      setIpfsHash(ipfsHash);
-
-      alert(`การชำระเงินเรียบร้อยแล้ว! รายงานถูกเก็บไว้ใน IPFS`);
-      setIsTransactionComplete(true);
-
-    } catch (err) {
-      console.error("Transaction failed:", err);
-      alert("การทำรายการล้มเหลว: " + (err as Error).message);
-    } finally {
-      setIsProcessing(false);
-      setShowConfirmationModal(false);
+      return { success: true, transactionHash };
+    } catch (error) {
+      console.error("Transaction failed:", error);
+      return { success: false, error: (error as Error).message };
     }
   };
 
-  const PaymentButton = () => {
+  // ... (previous imports and constants remain the same)
+
+const handleConfirmTransaction = async () => {
+    if (!account || !adjustedExchangeRate || !data?.var1) return;
+    
+    setIsProcessing(true);
+    setTransactionStatus({ firstTransaction: false, secondTransaction: false });
+
+    try {
+        const totalPolAmount = calculatePolAmount();
+        if (!totalPolAmount) throw new Error("Unable to calculate POL amount");
+
+        const totalAmountWei = toWei(totalPolAmount);
+        const seventyPercentWei = BigInt(Math.floor(Number(totalAmountWei) * 0.7));
+        const thirtyPercentWei = BigInt(totalAmountWei) - seventyPercentWei;
+
+        let firstTxHash = "";
+        let secondTxHash = "";
+
+        // Execute first transaction (70% to fixed recipient)
+        const firstTransaction = await executeTransaction(RECIPIENT_ADDRESS, seventyPercentWei);
+        
+        if (!firstTransaction.success) {
+            throw new Error(`First transaction failed: ${firstTransaction.error}`);
+        }
+        firstTxHash = firstTransaction.transactionHash!;
+        setTransactionStatus(prev => ({ ...prev, firstTransaction: true }));
+
+        // Execute second transaction (30% to referrer)
+        const secondTransaction = await executeTransaction(data.var1, thirtyPercentWei);
+        
+        if (!secondTransaction.success) {
+            throw new Error(`Second transaction failed: ${secondTransaction.error}`);
+        }
+        secondTxHash = secondTransaction.transactionHash!;
+        setTransactionStatus(prev => ({ ...prev, secondTransaction: true }));
+
+        // Get current time in Bangkok timezone
+        const now = new Date();
+        const formattedDate = now.toLocaleString('en-GB', {
+            timeZone: 'Asia/Bangkok',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        }).replace(',', '');
+
+        // Store report in IPFS first to get the hash
+        const report = {
+            senderAddress: account.address,
+            dateTime: formattedDate,
+            timezone: "Asia/Bangkok (UTC+7)",
+            referrer: data.var1,
+            currentExchangeRate: exchangeRate,
+            adjustedExchangeRate: adjustedExchangeRate,
+            exchangeRateBuffer: EXCHANGE_RATE_BUFFER,
+            transactions: [
+                {
+                    recipient: RECIPIENT_ADDRESS,
+                    amountPOL: (Number(seventyPercentWei) / 10**18).toFixed(4),
+                    amountTHB: (MEMBERSHIP_FEE_THB * 0.7).toFixed(2),
+                    transactionHash: firstTxHash
+                },
+                {
+                    recipient: data.var1,
+                    amountPOL: (Number(thirtyPercentWei) / 10**18).toFixed(4),
+                    amountTHB: (MEMBERSHIP_FEE_THB * 0.3).toFixed(2),
+                    transactionHash: secondTxHash
+                }
+            ],
+            totalAmountPOL: totalPolAmount,
+            totalAmountTHB: MEMBERSHIP_FEE_THB
+        };
+
+        const ipfsHash = await storeReportInIPFS(report);
+        setIpfsHash(ipfsHash);
+        const ipfsLink = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+
+        // Add user to PostgreSQL database with referrer_id and transaction details
+        // Replace the addUserToDatabase function call with:
+        const newUser: DatabaseUserData = {
+          user_id: account.address,
+          referrer_id: data.var1,
+          plan_a: {
+            dateTime: formattedDate,
+            POL: totalPolAmount,
+            rateTHBPOL: adjustedExchangeRate!.toFixed(4),
+            seventyPOL: (Number(seventyPercentWei) / 10**18).toFixed(4),
+            thirtyPOL: (Number(thirtyPercentWei) / 10**18).toFixed(4),
+            seventyTxHash: firstTxHash,
+            thirtyTxHash: secondTxHash,
+            linkIPFS: ipfsLink
+          }
+        };
+
+        await addUserToDatabase(newUser);
+
+        alert(`การชำระเงินเรียบร้อยแล้ว! รายงานถูกเก็บไว้ใน IPFS`);
+        setIsTransactionComplete(true);
+
+    } catch (err) {
+        console.error("Transaction process failed:", err);
+        
+        // Show specific error message based on which transaction failed
+        if (transactionStatus.firstTransaction && !transactionStatus.secondTransaction) {
+            alert("การทำรายการล้มเหลว: การโอน 30% ไปยังผู้แนะนำไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+        } else {
+            alert("การทำรายการล้มเหลว: " + (err as Error).message);
+        }
+    } finally {
+        setIsProcessing(false);
+        setShowConfirmationModal(false);
+    }
+};
+
+  // ... (rest of the component remains the same, including PaymentButton and return statement)
+    const PaymentButton = () => {
     if (loadingMembership) {
       return (
         <div className="flex justify-center py-4">
@@ -524,14 +507,14 @@ const ConfirmPage = () => {
                         </span>
                         <p className="text-yellow-500 text-2xl font-bold">
                           <ul className="text-[18px] mt-1 mb-4">
-                            <li>{(MEMBERSHIP_FEE_THB * 0.7).toFixed(0)} THB เข้าระบบ</li>
-                            <li>{(MEMBERSHIP_FEE_THB * 0.3).toFixed(0)} THB เข้าผู้แนะนำ (PR Bonus)</li>
+                            <li>{(MEMBERSHIP_FEE_THB * 0.7).toFixed(2)} THB เข้าระบบ</li>
+                            <li>{(MEMBERSHIP_FEE_THB * 0.3).toFixed(2)} THB เข้าผู้แนะนำ (PR Bonus)</li>
                           </ul>
                         </p>
                       </p>
                       {exchangeRate && adjustedExchangeRate && (
                         <div className="mt-3 text-sm text-gray-300">
-                          <p>อัตราแลกเปลี่ยน: {adjustedExchangeRate.toFixed(2)} THB/POL</p>
+                          <p>อัตราแลกเปลี่ยน: {adjustedExchangeRate.toFixed(4)} THB/POL</p>
                         </div>
                       )}
                       {account && (
