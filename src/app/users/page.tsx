@@ -28,7 +28,7 @@ interface User {
   updated_at: string;
 }
 
-type SortField = 'id' | 'user_id' | 'email' | 'name' | 'token_id' | 'created_at';
+type SortField = 'token_id' | 'user_id' | 'email' | 'name' | 'created_at';
 type SortDirection = 'asc' | 'desc';
 
 export default function AdminDashboard() {
@@ -275,7 +275,7 @@ export default function AdminDashboard() {
           <div className="flex-1">
             <input
               type="text"
-              placeholder="Search users by ID, email, name, token, or referrer..."
+              placeholder="Search users by email, name, token, or referrer..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
@@ -311,10 +311,10 @@ export default function AdminDashboard() {
                 <thead>
                   <tr className="bg-gray-50 dark:bg-gray-700">
                     <th 
-                      className="px-4 py-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
-                      onClick={() => handleSort('id')}
+                      className="px-4 py-2 text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                      onClick={() => handleSort('token_id')}
                     >
-                      ID {sortField === 'id' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      Token ID {sortField === 'token_id' && (sortDirection === 'asc' ? '↑' : '↓')}
                     </th>
                     <th 
                       className="px-4 py-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
@@ -333,12 +333,6 @@ export default function AdminDashboard() {
                       onClick={() => handleSort('name')}
                     >
                       Name {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th 
-                      className="px-4 py-2 text-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
-                      onClick={() => handleSort('token_id')}
-                    >
-                      Token ID {sortField === 'token_id' && (sortDirection === 'asc' ? '↑' : '↓')}
                     </th>
                     <th className="px-4 py-2 text-left">Referrer</th>
                     
@@ -363,7 +357,7 @@ export default function AdminDashboard() {
                   {/* Sub-header row for Plan A and Plan B details */}
                   <tr className="bg-gray-50 dark:bg-gray-700">
                     {/* Empty cells for previous columns */}
-                    <th colSpan={6} className="px-4 py-2"></th>
+                    <th colSpan={5} className="px-4 py-2"></th>
                     
                     {/* Plan A Sub-columns */}
                     <th className="px-2 py-1 text-left text-xs font-medium text-gray-600 dark:text-gray-300">POL</th>
@@ -385,15 +379,14 @@ export default function AdminDashboard() {
                       <td className="px-4 py-2">
                         <button
                           onClick={() => setSelectedUser(user)}
-                          className="font-mono text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                          className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-left"
                         >
-                          {user.id}
+                          {user.token_id || 'N/A'}
                         </button>
                       </td>
                       <td className="px-4 py-2 font-mono text-sm">{user.user_id}</td>
                       <td className="px-4 py-2">{user.email || 'N/A'}</td>
                       <td className="px-4 py-2">{user.name || 'N/A'}</td>
-                      <td className="px-4 py-2">{user.token_id || 'N/A'}</td>
                       <td className="px-4 py-2 font-mono text-sm">
                         {user.referrer_id || 'None'}
                       </td>
@@ -537,8 +530,8 @@ export default function AdminDashboard() {
                   <h3 className="font-semibold text-gray-700 dark:text-gray-300 underline">Basic Information</h3>
                   <dl className="mt-2 space-y-2">
                     <div>
-                      <dt className="text-sm text-gray-500 dark:text-gray-400">ID</dt>
-                      <dd className="font-mono text-sm">{selectedUser.id}</dd>
+                      <dt className="text-sm text-gray-500 dark:text-gray-400">Token ID</dt>
+                      <dd className="text-sm font-mono">{selectedUser.token_id || 'N/A'}</dd>
                     </div>
                     <div>
                       <dt className="text-sm text-gray-500 dark:text-gray-400">User ID</dt>
@@ -551,10 +544,6 @@ export default function AdminDashboard() {
                     <div>
                       <dt className="text-sm text-gray-500 dark:text-gray-400">Name</dt>
                       <dd className="text-sm">{selectedUser.name || 'N/A'}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm text-gray-500 dark:text-gray-400">Token ID</dt>
-                      <dd className="text-sm">{selectedUser.token_id || 'N/A'}</dd>
                     </div>
                     <div>
                       <dt className="text-sm text-gray-500 dark:text-gray-400">Referrer</dt>
