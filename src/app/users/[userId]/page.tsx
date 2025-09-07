@@ -51,8 +51,8 @@ export default function UserDetails({ params }: { params: Promise<{ userId: stri
                 setError(null);
                 
                 // Fetch the NEW USER's data from the database using your existing API
-                const userResponse = await fetch(`/api/users/${resolvedParams.userId}`);
-                
+                const userResponse = await fetch(`/api/users?user_id=${resolvedParams.userId}`);
+
                 if (!userResponse.ok) {
                     if (userResponse.status === 404) {
                         throw new Error("ไม่พบข้อมูลผู้ใช้งานในระบบ");

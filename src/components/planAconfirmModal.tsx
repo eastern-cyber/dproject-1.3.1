@@ -22,7 +22,7 @@ export const PlanAConfirmModal = ({ children, onClose, disableClose = false }: P
       <div className="relative">
         {!disableClose && ( // Only show close button if disableClose is false
           <button
-            className="absolute top-2 right-2 text-gray-400 hover:text-white"
+            className="absolute top-2 right-2 text-gray-400 hover:text-white cursor-pointer"
             onClick={onClose}
           >
             ✕
