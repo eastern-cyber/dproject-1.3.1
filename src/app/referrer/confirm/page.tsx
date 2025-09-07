@@ -1,4 +1,6 @@
 //src/app/referrer/confirm/page.tsx
+//separate two modals for each particular send POL transaction
+//Retry modal until each particular trasaction succeeded
 "use client";
 
 import { client } from "@/lib/client";
@@ -12,6 +14,7 @@ import { polygon } from "thirdweb/chains";
 import Footer from "@/components/Footer";
 import { prepareContractCall, toWei, sendTransaction, readContract } from "thirdweb";
 import { PlanAConfirmModal } from "@/components/planAconfirmModal";
+import { useRouter } from "next/navigation";
 
 // Constants
 const RECIPIENT_ADDRESS = "0x3BBf139420A8Ecc2D06c64049fE6E7aE09593944";
@@ -32,7 +35,6 @@ type TransactionStatus = {
   error?: string;
 };
 
-// Add this type definition near the top of the file, after the existing types
 type PlanAData = {
   dateTime: string;
   POL: string;
@@ -51,24 +53,27 @@ type DatabaseUserData = {
 };
 
 const ConfirmPage = () => {
-  // Tracking transaction completion
+  const router = useRouter();
   const [isTransactionComplete, setIsTransactionComplete] = useState(false);
   const [transactionStatus, setTransactionStatus] = useState<TransactionStatus>({
     firstTransaction: false,
     secondTransaction: false
   });
   const [ipfsHash, setIpfsHash] = useState<string | null>(null);
-
   const [data, setData] = useState<UserData | null>(null);
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const [adjustedExchangeRate, setAdjustedExchangeRate] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [showFirstConfirmationModal, setShowFirstConfirmationModal] = useState(false);
+  const [showSecondConfirmationModal, setShowSecondConfirmationModal] = useState(false);
+  const [isProcessingFirst, setIsProcessingFirst] = useState(false);
+  const [isProcessingSecond, setIsProcessingSecond] = useState(false);
+  const [firstTxHash, setFirstTxHash] = useState<string>("");
   const [polBalance, setPolBalance] = useState<string>("0");
   const [isMember, setIsMember] = useState(false);
   const [loadingMembership, setLoadingMembership] = useState(false);
+  const [transactionError, setTransactionError] = useState<string | null>(null);
   const account = useActiveAccount();
 
   // Fetch wallet balance when account changes
@@ -207,29 +212,27 @@ const ConfirmPage = () => {
     }
   };
 
-  // Add user to PostgreSQL database
-  // Update the addUserToDatabase function to accept the new type
-const addUserToDatabase = async (userData: DatabaseUserData) => {
-  try {
-    const response = await fetch('/api/add-user', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(userData),
-    });
+  const addUserToDatabase = async (userData: DatabaseUserData) => {
+    try {
+      const response = await fetch('/api/add-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
 
-    if (!response.ok) {
-      throw new Error(`Database error: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`Database error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('Error adding user to database:', error);
+      throw error;
     }
-
-    const result = await response.json();
-    return result;
-  } catch (error) {
-    console.error('Error adding user to database:', error);
-    throw error;
-  }
-};
+  };
 
   const executeTransaction = async (to: string, amountWei: bigint) => {
     try {
@@ -265,126 +268,159 @@ const addUserToDatabase = async (userData: DatabaseUserData) => {
     }
   };
 
-  // ... (previous imports and constants remain the same)
-
-const handleConfirmTransaction = async () => {
+  const handleFirstTransaction = async () => {
     if (!account || !adjustedExchangeRate || !data?.var1) return;
     
-    setIsProcessing(true);
-    setTransactionStatus({ firstTransaction: false, secondTransaction: false });
+    setIsProcessingFirst(true);
+    setTransactionError(null);
 
     try {
-        const totalPolAmount = calculatePolAmount();
-        if (!totalPolAmount) throw new Error("Unable to calculate POL amount");
+      const totalPolAmount = calculatePolAmount();
+      if (!totalPolAmount) throw new Error("Unable to calculate POL amount");
 
-        const totalAmountWei = toWei(totalPolAmount);
-        const seventyPercentWei = BigInt(Math.floor(Number(totalAmountWei) * 0.7));
-        const thirtyPercentWei = BigInt(totalAmountWei) - seventyPercentWei;
+      const totalAmountWei = toWei(totalPolAmount);
+      const seventyPercentWei = BigInt(Math.floor(Number(totalAmountWei) * 0.7));
 
-        let firstTxHash = "";
-        let secondTxHash = "";
-
-        // Execute first transaction (70% to fixed recipient)
-        const firstTransaction = await executeTransaction(RECIPIENT_ADDRESS, seventyPercentWei);
-        
-        if (!firstTransaction.success) {
-            throw new Error(`First transaction failed: ${firstTransaction.error}`);
-        }
-        firstTxHash = firstTransaction.transactionHash!;
-        setTransactionStatus(prev => ({ ...prev, firstTransaction: true }));
-
-        // Execute second transaction (30% to referrer)
-        const secondTransaction = await executeTransaction(data.var1, thirtyPercentWei);
-        
-        if (!secondTransaction.success) {
-            throw new Error(`Second transaction failed: ${secondTransaction.error}`);
-        }
-        secondTxHash = secondTransaction.transactionHash!;
-        setTransactionStatus(prev => ({ ...prev, secondTransaction: true }));
-
-        // Get current time in Bangkok timezone
-        const now = new Date();
-        const formattedDate = now.toLocaleString('en-GB', {
-            timeZone: 'Asia/Bangkok',
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: false
-        }).replace(',', '');
-
-        // Store report in IPFS first to get the hash
-        const report = {
-            senderAddress: account.address,
-            dateTime: formattedDate,
-            timezone: "Asia/Bangkok (UTC+7)",
-            referrer: data.var1,
-            currentExchangeRate: exchangeRate,
-            adjustedExchangeRate: adjustedExchangeRate,
-            exchangeRateBuffer: EXCHANGE_RATE_BUFFER,
-            transactions: [
-                {
-                    recipient: RECIPIENT_ADDRESS,
-                    amountPOL: (Number(seventyPercentWei) / 10**18).toFixed(4),
-                    amountTHB: (MEMBERSHIP_FEE_THB * 0.7).toFixed(2),
-                    transactionHash: firstTxHash
-                },
-                {
-                    recipient: data.var1,
-                    amountPOL: (Number(thirtyPercentWei) / 10**18).toFixed(4),
-                    amountTHB: (MEMBERSHIP_FEE_THB * 0.3).toFixed(2),
-                    transactionHash: secondTxHash
-                }
-            ],
-            totalAmountPOL: totalPolAmount,
-            totalAmountTHB: MEMBERSHIP_FEE_THB
-        };
-
-        const ipfsHash = await storeReportInIPFS(report);
-        setIpfsHash(ipfsHash);
-        const ipfsLink = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
-
-        // Add user to PostgreSQL database with referrer_id and transaction details
-        // Replace the addUserToDatabase function call with:
-        const newUser: DatabaseUserData = {
-          user_id: account.address,
-          referrer_id: data.var1,
-          plan_a: {
-            dateTime: formattedDate,
-            POL: totalPolAmount,
-            rateTHBPOL: adjustedExchangeRate!.toFixed(4),
-            seventyPOL: (Number(seventyPercentWei) / 10**18).toFixed(4),
-            thirtyPOL: (Number(thirtyPercentWei) / 10**18).toFixed(4),
-            seventyTxHash: firstTxHash,
-            thirtyTxHash: secondTxHash,
-            linkIPFS: ipfsLink
-          }
-        };
-
-        await addUserToDatabase(newUser);
-
-        alert(`การชำระเงินเรียบร้อยแล้ว! รายงานถูกเก็บไว้ใน IPFS`);
-        setIsTransactionComplete(true);
+      // Execute first transaction (70% to fixed recipient)
+      const firstTransaction = await executeTransaction(RECIPIENT_ADDRESS, seventyPercentWei);
+      
+      if (!firstTransaction.success) {
+        throw new Error(`First transaction failed: ${firstTransaction.error}`);
+      }
+      
+      setFirstTxHash(firstTransaction.transactionHash!);
+      setTransactionStatus(prev => ({ ...prev, firstTransaction: true }));
+      
+      // Close first modal and open second modal
+      setShowFirstConfirmationModal(false);
+      setShowSecondConfirmationModal(true);
 
     } catch (err) {
-        console.error("Transaction process failed:", err);
-        
-        // Show specific error message based on which transaction failed
-        if (transactionStatus.firstTransaction && !transactionStatus.secondTransaction) {
-            alert("การทำรายการล้มเหลว: การโอน 30% ไปยังผู้แนะนำไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
-        } else {
-            alert("การทำรายการล้มเหลว: " + (err as Error).message);
-        }
+      console.error("First transaction failed:", err);
+      setTransactionError(`การทำรายการล้มเหลว: ${(err as Error).message}`);
     } finally {
-        setIsProcessing(false);
-        setShowConfirmationModal(false);
+      setIsProcessingFirst(false);
     }
-};
+  };
 
-  // ... (rest of the component remains the same, including PaymentButton and return statement)
-    const PaymentButton = () => {
+  const handleSecondTransaction = async () => {
+    if (!account || !adjustedExchangeRate || !data?.var1 || !firstTxHash) return;
+    
+    setIsProcessingSecond(true);
+    setTransactionError(null);
+
+    try {
+      const totalPolAmount = calculatePolAmount();
+      if (!totalPolAmount) throw new Error("Unable to calculate POL amount");
+
+      const totalAmountWei = toWei(totalPolAmount);
+      const seventyPercentWei = BigInt(Math.floor(Number(totalAmountWei) * 0.7));
+      const thirtyPercentWei = BigInt(totalAmountWei) - seventyPercentWei;
+
+      // Execute second transaction (30% to referrer)
+      const secondTransaction = await executeTransaction(data.var1, thirtyPercentWei);
+      
+      if (!secondTransaction.success) {
+        throw new Error(`Second transaction failed: ${secondTransaction.error}`);
+      }
+      
+      setTransactionStatus(prev => ({ ...prev, secondTransaction: true }));
+
+      // Get current time in Bangkok timezone
+      const now = new Date();
+      const formattedDate = now.toLocaleString('en-GB', {
+        timeZone: 'Asia/Bangkok',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      }).replace(',', '');
+
+      // Store report in IPFS
+      const report = {
+        senderAddress: account.address,
+        dateTime: formattedDate,
+        timezone: "Asia/Bangkok (UTC+7)",
+        referrer: data.var1,
+        currentExchangeRate: exchangeRate,
+        adjustedExchangeRate: adjustedExchangeRate,
+        exchangeRateBuffer: EXCHANGE_RATE_BUFFER,
+        transactions: [
+          {
+            recipient: RECIPIENT_ADDRESS,
+            amountPOL: (Number(seventyPercentWei) / 10**18).toFixed(4),
+            amountTHB: (MEMBERSHIP_FEE_THB * 0.7).toFixed(2),
+            transactionHash: firstTxHash
+          },
+          {
+            recipient: data.var1,
+            amountPOL: (Number(thirtyPercentWei) / 10**18).toFixed(4),
+            amountTHB: (MEMBERSHIP_FEE_THB * 0.3).toFixed(2),
+            transactionHash: secondTransaction.transactionHash
+          }
+        ],
+        totalAmountPOL: totalPolAmount,
+        totalAmountTHB: MEMBERSHIP_FEE_THB
+      };
+
+      const ipfsHash = await storeReportInIPFS(report);
+      setIpfsHash(ipfsHash);
+      const ipfsLink = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+
+      // Add user to PostgreSQL database
+      const newUser: DatabaseUserData = {
+        user_id: account.address,
+        referrer_id: data.var1,
+        plan_a: {
+          dateTime: formattedDate,
+          POL: totalPolAmount,
+          rateTHBPOL: adjustedExchangeRate!.toFixed(4),
+          seventyPOL: (Number(seventyPercentWei) / 10**18).toFixed(4),
+          thirtyPOL: (Number(thirtyPercentWei) / 10**18).toFixed(4),
+          seventyTxHash: firstTxHash,
+          thirtyTxHash: secondTransaction.transactionHash!,
+          linkIPFS: ipfsLink
+        }
+      };
+
+      await addUserToDatabase(newUser);
+
+      setIsTransactionComplete(true);
+      setShowSecondConfirmationModal(false);
+      
+      // Redirect to user page after successful completion
+      router.push(`/users/${account.address}`);
+
+    } catch (err) {
+      console.error("Second transaction failed:", err);
+      setTransactionError(`การทำรายการล้มเหลว: ${(err as Error).message}`);
+    } finally {
+      setIsProcessingSecond(false);
+    }
+  };
+
+  const handleCloseFirstModal = () => {
+    if (transactionStatus.firstTransaction) {
+      // If first transaction is already completed, don't allow closing
+      return;
+    }
+    setShowFirstConfirmationModal(false);
+    setTransactionError(null);
+  };
+
+  const handleCloseSecondModal = () => {
+    if (transactionStatus.secondTransaction) {
+      // If second transaction is already completed, don't allow closing
+      return;
+    }
+    setShowSecondConfirmationModal(false);
+    setTransactionError(null);
+  };
+
+  const PaymentButton = () => {
     if (loadingMembership) {
       return (
         <div className="flex justify-center py-4">
@@ -428,12 +464,12 @@ const handleConfirmTransaction = async () => {
           ) : (
             <button
               className={`flex flex-col mt-1 border border-zinc-100 px-4 py-3 rounded-lg transition-colors ${
-                !account || !adjustedExchangeRate || isProcessing
+                !account || !adjustedExchangeRate || isProcessingFirst || isProcessingSecond
                   ? "bg-gray-600 cursor-not-allowed"
                   : "bg-red-700 hover:bg-red-800 hover:border-zinc-400"
               }`}
-              onClick={() => setShowConfirmationModal(true)}
-              disabled={!account || !adjustedExchangeRate || isProcessing}
+              onClick={() => setShowFirstConfirmationModal(true)}
+              disabled={!account || !adjustedExchangeRate || isProcessingFirst || isProcessingSecond}
             >
               <span className="text-[18px]">
                 {!account ? "กรุณาเชื่อมต่อกระเป๋า" : "ดำเนินการต่อ"}
@@ -494,23 +530,21 @@ const handleConfirmTransaction = async () => {
             <div className="flex flex-col items-center justify-center w-full p-2 m-2">
               <PaymentButton />
               
-              {/* Confirmation Modal */}
-              {showConfirmationModal && (
-                <PlanAConfirmModal onClose={() => setShowConfirmationModal(false)}>
+              {/* First Confirmation Modal - Cannot be closed if transaction is in progress or completed */}
+              {showFirstConfirmationModal && (
+                <PlanAConfirmModal 
+                  onClose={handleCloseFirstModal}
+                  disableClose={isProcessingFirst || transactionStatus.firstTransaction}
+                >
                   <div className="p-6 bg-gray-900 rounded-lg border border-gray-700 max-w-md">
-                    <h3 className="text-xl font-bold mb-4 text-center">ยืนยันการชำระ</h3>
+                    <h3 className="text-xl font-bold mb-4 text-center">ยืนยันการชำระครั้งที่ 1</h3>
                     <div className="mb-6 text-center">
                       <p className="text-[18px]">
-                        ค่าสมาชิกจำนวน<br />
+                        โอนค่าสมาชิกส่วนที่ 1 (70%)<br />
                         <span className="text-yellow-500 text-[22px] font-bold">
-                          {MEMBERSHIP_FEE_THB} THB (≈ {calculatePolAmount()} POL)
+                          {(MEMBERSHIP_FEE_THB * 0.7).toFixed(2)} THB (≈ {(Number(calculatePolAmount()) * 0.7).toFixed(4)} POL)
                         </span>
-                        <p className="text-yellow-500 text-2xl font-bold">
-                          <ul className="text-[18px] mt-1 mb-4">
-                            <li>{(MEMBERSHIP_FEE_THB * 0.7).toFixed(2)} THB เข้าระบบ</li>
-                            <li>{(MEMBERSHIP_FEE_THB * 0.3).toFixed(2)} THB เข้าผู้แนะนำ (PR Bonus)</li>
-                          </ul>
-                        </p>
+                        <p className="text-sm mt-2">ไปยังระบบ</p>
                       </p>
                       {exchangeRate && adjustedExchangeRate && (
                         <div className="mt-3 text-sm text-gray-300">
@@ -518,7 +552,7 @@ const handleConfirmTransaction = async () => {
                         </div>
                       )}
                       {account && (
-                        <p className="mt-3 text-[16]">
+                        <p className="mt-3 text-[16px]">
                           POL ในกระเป๋าของคุณ: <span className="text-green-400">{polBalance}</span>
                         </p>
                       )}
@@ -527,25 +561,82 @@ const handleConfirmTransaction = async () => {
                           ⚠️ จำนวน POL ในกระเป๋าของคุณไม่เพียงพอ
                         </p>
                       )}
+                      {transactionError && (
+                        <p className="mt-3 text-red-400 text-sm">
+                          {transactionError}
+                        </p>
+                      )}
                     </div>
                     <div className="flex flex-col gap-3">
                       <button
                         className={`px-6 py-3 rounded-lg font-medium ${
-                          !account || parseFloat(polBalance) < parseFloat(calculatePolAmount() || "0")
+                          !account || parseFloat(polBalance) < parseFloat(calculatePolAmount() || "0") || isProcessingFirst
                             ? "bg-gray-600 cursor-not-allowed"
                             : "bg-red-600 hover:bg-red-700"
                         }`}
-                        onClick={handleConfirmTransaction}
-                        disabled={!account || isProcessing || parseFloat(polBalance) < parseFloat(calculatePolAmount() || "0")}
+                        onClick={handleFirstTransaction}
+                        disabled={!account || isProcessingFirst || parseFloat(polBalance) < parseFloat(calculatePolAmount() || "0")}
                       >
-                        {isProcessing ? 'กำลังดำเนินการ...' : 'ยืนยัน'}
+                        {isProcessingFirst ? 'กำลังดำเนินการ...' : 'ยืนยันการโอนครั้งที่ 1'}
                       </button>
                       <button
                         className="px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg"
-                        onClick={() => setShowConfirmationModal(false)}
-                        disabled={isProcessing}
+                        onClick={handleCloseFirstModal}
+                        disabled={isProcessingFirst || transactionStatus.firstTransaction}
                       >
-                        ยกเลิก
+                        {transactionStatus.firstTransaction ? 'ดำเนินการต่อ' : 'ยกเลิก'}
+                      </button>
+                    </div>
+                  </div>
+                </PlanAConfirmModal>
+              )}
+
+              {/* Second Confirmation Modal - Cannot be closed if transaction is in progress or completed */}
+              {showSecondConfirmationModal && (
+                <PlanAConfirmModal 
+                  onClose={handleCloseSecondModal}
+                  disableClose={isProcessingSecond || transactionStatus.secondTransaction}
+                >
+                  <div className="p-6 bg-gray-900 rounded-lg border border-gray-700 max-w-md">
+                    <h3 className="text-xl font-bold mb-4 text-center">ยืนยันการชำระครั้งที่ 2</h3>
+                    <div className="mb-6 text-center">
+                      <p className="text-[18px]">
+                        โอนค่าสมาชิกส่วนที่ 2 (30%)<br />
+                        <span className="text-yellow-500 text-[22px] font-bold">
+                          {(MEMBERSHIP_FEE_THB * 0.3).toFixed(2)} THB (≈ {(Number(calculatePolAmount()) * 0.3).toFixed(4)} POL)
+                        </span>
+                        <p className="text-sm mt-2">ไปยังผู้แนะนำ</p>
+                      </p>
+                      {data && (
+                        <p className="text-sm text-gray-300 mt-2">
+                          ผู้แนะนำ: {data.var1.slice(0, 6)}...{data.var1.slice(-4)}
+                        </p>
+                      )}
+                      <p className="text-sm text-green-400 mt-4">
+                        ✅ การโอนครั้งที่ 1 สำเร็จแล้ว
+                      </p>
+                      {transactionError && (
+                        <p className="mt-3 text-red-400 text-sm">
+                          {transactionError}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      <button
+                        className={`px-6 py-3 rounded-lg font-medium ${
+                          isProcessingSecond ? "bg-gray-600 cursor-not-allowed" : "bg-red-600 hover:bg-red-700"
+                        }`}
+                        onClick={handleSecondTransaction}
+                        disabled={isProcessingSecond}
+                      >
+                        {isProcessingSecond ? 'กำลังดำเนินการ...' : 'ยืนยันการโอนครั้งที่ 2'}
+                      </button>
+                      <button
+                        className="px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg"
+                        onClick={handleCloseSecondModal}
+                        disabled={isProcessingSecond || transactionStatus.secondTransaction}
+                      >
+                        {transactionStatus.secondTransaction ? 'เสร็จสิ้น' : 'ยกเลิก'}
                       </button>
                     </div>
                   </div>
