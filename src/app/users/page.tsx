@@ -320,7 +320,7 @@ export default function AdminDashboard() {
                       className="px-4 py-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
                       onClick={() => handleSort('user_id')}
                     >
-                      User ID <br />&#9655;Wallet Address {sortField === 'user_id' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      User ID <br />&#9655;WalletAddress {sortField === 'user_id' && (sortDirection === 'asc' ? '↑' : '↓')}
                     </th>
                     <th 
                       className="px-4 py-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
@@ -510,10 +510,16 @@ export default function AdminDashboard() {
         )}
       </div>
 
-      {/* User Detail Modal */}
+      // User Detail Modal
       {selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          onClick={() => setSelectedUser(null)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold">User Details</h2>
@@ -534,7 +540,7 @@ export default function AdminDashboard() {
                       <dd className="text-sm font-mono">{selectedUser.token_id || 'N/A'}</dd>
                     </div>
                     <div>
-                      <dt className="text-sm text-gray-500 dark:text-gray-400">User ID</dt>
+                      <dt className="text-sm text-gray-500 dark:text-gray-400">User ID &#9655;WalletAddress</dt>
                       <dd className="font-mono text-sm">{selectedUser.user_id}</dd>
                     </div>
                     <div>
