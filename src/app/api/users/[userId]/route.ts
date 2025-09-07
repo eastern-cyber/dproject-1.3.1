@@ -1,5 +1,5 @@
 // src/app/api/users/[userId]/route.ts (rename the folder from [users] to [userId])
-
+// src/app/api/users/[userId]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import sql from '@/lib/db';
 
