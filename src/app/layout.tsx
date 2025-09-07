@@ -24,7 +24,7 @@ export default function RootLayout({
         suppressHydrationWarning={true}
       >
         <ThirdwebProvider>
-        // Force dark theme  
+        {/* Force dark theme   */}
         <div className="dark-theme">
         {children}
         </div>
