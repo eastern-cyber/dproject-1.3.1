@@ -1,4 +1,4 @@
-//src/app/users/[userId]/page.tsx
+// src/app/users/[userId]/page.tsx
 
 "use client";
 
@@ -16,6 +16,7 @@ interface UserData {
   name?: string;
   token_id?: string;
   referrer_id?: string;
+  created_at?: string;
 }
 
 type ReferrerData = {
@@ -42,76 +43,45 @@ export default function UserDetails({ params }: { params: Promise<{ userId: stri
     }, [params]);
 
     useEffect(() => {
-        const fetchUserData = async () => {
+        const fetchData = async () => {
             if (!resolvedParams.userId) return;
 
             try {
                 setLoading(true);
                 setError(null);
                 
-                // Try to get data from sessionStorage first (from the previous page)
+                // Fetch the NEW USER's data from the database using your existing API
+                const userResponse = await fetch(`/api/users/${resolvedParams.userId}`);
+                
+                if (!userResponse.ok) {
+                    if (userResponse.status === 404) {
+                        throw new Error("ไม่พบข้อมูลผู้ใช้งานในระบบ");
+                    }
+                    throw new Error(`HTTP error! status: ${userResponse.status}`);
+                }
+                
+                const userDataFromApi = await userResponse.json();
+                setUserData(userDataFromApi);
+                
+                // Try to get referrer data from sessionStorage (from the previous page)
                 const storedData = sessionStorage.getItem("mintingsData");
                 
                 if (storedData) {
                     try {
                         const parsedData = JSON.parse(storedData);
                         setReferrerData({
-                            var1: parsedData.var1 || '',
-                            var2: parsedData.var2 || '',
-                            var3: parsedData.var3 || '',
-                            var4: parsedData.var4 || ''
+                            var1: parsedData.var1 || "",
+                            var2: parsedData.var2 || "ไม่พบข้อมูล",
+                            var3: parsedData.var3 || "ไม่พบข้อมูล",
+                            var4: parsedData.var4 || "ไม่พบข้อมูล"
                         });
-                        
-                        // Also set user data from the URL params and session data
-                        setUserData({
-                            user_id: resolvedParams.userId,
-                            email: parsedData.userEmail || parsedData.var2 || "ไม่พบข้อมูล",
-                            name: parsedData.userName || parsedData.var3 || "ไม่พบข้อมูล",
-                            token_id: parsedData.userTokenId || parsedData.var4 || "ไม่พบข้อมูล",
-                            referrer_id: parsedData.var1
-                        });
-                        
-                        setLoading(false);
-                        return;
                     } catch (parseError) {
                         console.error("Error parsing session data:", parseError);
                     }
                 }
-
-                // If no session data, try to fetch from API
-                try {
-                    const response = await fetch(`/api/user/${resolvedParams.userId}`);
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        
-                        if (data.error) {
-                            setError(data.error);
-                        } else {
-                            setUserData(data);
-                            // If the API returns referrer data, use it
-                            if (data.referrer_id) {
-                                setReferrerData({
-                                    var1: data.referrer_id,
-                                    var2: data.referrer_email || "ไม่พบข้อมูล",
-                                    var3: data.referrer_name || "ไม่พบข้อมูล",
-                                    var4: data.referrer_token_id || "ไม่พบข้อมูล"
-                                });
-                            }
-                        }
-                    }
-                } catch (apiError) {
-                    console.error("API fetch error:", apiError);
-                    // If API fails, set basic user data from URL
-                    setUserData({
-                        user_id: resolvedParams.userId,
-                        email: "ไม่พบข้อมูล",
-                        name: "ไม่พบข้อมูล",
-                        token_id: "ไม่พบข้อมูล"
-                    });
-                }
+                
             } catch (error) {
-                console.error("Error fetching user data:", error);
+                console.error("Error fetching data:", error);
                 setError(error instanceof Error ? error.message : "เกิดข้อผิดพลาดในการโหลดข้อมูล");
                 
                 // Fallback: at least show the wallet address from URL
@@ -127,7 +97,7 @@ export default function UserDetails({ params }: { params: Promise<{ userId: stri
         };
 
         if (resolvedParams.userId) {
-            fetchUserData();
+            fetchData();
         }
     }, [resolvedParams.userId]);
 
@@ -185,26 +155,6 @@ export default function UserDetails({ params }: { params: Promise<{ userId: stri
                                 </p>
                             </div>
                         </>
-                    ) : userData?.referrer_id ? (
-                        <>
-                            <p className="text-[16px] text-center mb-4 text-gray-300">
-                                ภายใต้การแนะนำของ
-                            </p>
-                            <div className="mt-2 text-center bg-gray-900 p-4 border border-gray-600 rounded-lg w-full">
-                                <p className="text-lg text-gray-300">
-                                    <b>เลขกระเป๋าผู้แนะนำ:</b> {formatWalletAddress(userData.referrer_id)}<br />
-                                </p>
-                                <p className="text-lg text-gray-300 mt-2">
-                                    <b>อีเมล:</b> {userData.email || "ไม่พบข้อมูล"}
-                                </p>
-                                <p className="text-lg text-gray-300 mt-2">
-                                    <b>ชื่อ:</b> {userData.name || "ไม่พบข้อมูล"}
-                                </p>
-                                <p className="text-lg text-red-500 mt-2">
-                                    <b>Token ID: {userData.token_id || "ไม่พบข้อมูล"}</b>
-                                </p>
-                            </div>
-                        </>
                     ) : (
                         <p className="text-gray-400 text-sm mt-2">ไม่พบข้อมูลผู้แนะนำ</p>
                     )}
@@ -219,7 +169,7 @@ export default function UserDetails({ params }: { params: Promise<{ userId: stri
                             <p className="text-[15px] text-gray-300">
                                 <b>เลขกระเป๋าของคุณ:</b>
                                 <span className="text-green-400 ml-2 break-all block mt-1">
-                                    {resolvedParams.userId || "ไม่พบกระเป๋า"}
+                                    {userData?.user_id || resolvedParams.userId || "ไม่พบกระเป๋า"}
                                 </span>
                             </p>
                             
@@ -250,11 +200,11 @@ export default function UserDetails({ params }: { params: Promise<{ userId: stri
                                 </p>
                                 <div className="bg-gray-700 p-2 rounded border border-gray-500">
                                     <p className="text-[13px] text-blue-300 break-all text-center">
-                                        https://dfi.fund/referrer/{resolvedParams.userId || "ไม่พบกระเป๋า"}
+                                        https://dfi.fund/referrer/{userData?.user_id || resolvedParams.userId || "ไม่พบกระเป๋า"}
                                     </p>
                                     <button
                                         onClick={() => {
-                                            const link = `https://dfi.fund/referrer/${resolvedParams.userId}`;
+                                            const link = `https://dfi.fund/referrer/${userData?.user_id || resolvedParams.userId}`;
                                             navigator.clipboard.writeText(link);
                                             alert('คัดลอกลิ้งค์เรียบร้อยแล้ว!');
                                         }}
