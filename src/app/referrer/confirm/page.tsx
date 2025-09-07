@@ -466,7 +466,7 @@ const ConfirmPage = () => {
               className={`flex flex-col mt-1 border border-zinc-100 px-4 py-3 rounded-lg transition-colors ${
                 !account || !adjustedExchangeRate || isProcessingFirst || isProcessingSecond
                   ? "bg-gray-600 cursor-not-allowed"
-                  : "bg-red-700 hover:bg-red-800 hover:border-zinc-400"
+                  : "bg-red-700 hover:bg-red-800 hover:border-zinc-400 cursor-pointer"
               }`}
               onClick={() => setShowFirstConfirmationModal(true)}
               disabled={!account || !adjustedExchangeRate || isProcessingFirst || isProcessingSecond}
@@ -572,7 +572,7 @@ const ConfirmPage = () => {
                         className={`px-6 py-3 rounded-lg font-medium ${
                           !account || parseFloat(polBalance) < parseFloat(calculatePolAmount() || "0") || isProcessingFirst
                             ? "bg-gray-600 cursor-not-allowed"
-                            : "bg-red-600 hover:bg-red-700"
+                            : "bg-red-600 hover:bg-red-700 cursor-pointer"
                         }`}
                         onClick={handleFirstTransaction}
                         disabled={!account || isProcessingFirst || parseFloat(polBalance) < parseFloat(calculatePolAmount() || "0")}
@@ -580,7 +580,7 @@ const ConfirmPage = () => {
                         {isProcessingFirst ? 'กำลังดำเนินการ...' : 'ยืนยันการโอนครั้งที่ 1'}
                       </button>
                       <button
-                        className="px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg"
+                        className="px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg cursor-pointer"
                         onClick={handleCloseFirstModal}
                         disabled={isProcessingFirst || transactionStatus.firstTransaction}
                       >
@@ -624,7 +624,7 @@ const ConfirmPage = () => {
                     <div className="flex flex-col gap-3">
                       <button
                         className={`px-6 py-3 rounded-lg font-medium ${
-                          isProcessingSecond ? "bg-gray-600 cursor-not-allowed" : "bg-red-600 hover:bg-red-700"
+                          isProcessingSecond ? "bg-gray-600 cursor-not-allowed" : "bg-red-600 hover:bg-red-700 cursor-pointer"
                         }`}
                         onClick={handleSecondTransaction}
                         disabled={isProcessingSecond}
@@ -632,7 +632,7 @@ const ConfirmPage = () => {
                         {isProcessingSecond ? 'กำลังดำเนินการ...' : 'ยืนยันการโอนครั้งที่ 2'}
                       </button>
                       <button
-                        className="px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg"
+                        className="px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg cursor-pointer"
                         onClick={handleCloseSecondModal}
                         disabled={isProcessingSecond || transactionStatus.secondTransaction}
                       >
