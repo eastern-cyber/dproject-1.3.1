@@ -604,12 +604,12 @@ const ConfirmPage = () => {
                   <div className="p-6 bg-gray-900 rounded-lg border border-gray-700 max-w-md">
                     <h3 className="text-xl font-bold mb-4 text-center">ยืนยันการชำระครั้งที่ 2</h3>
                     <div className="mb-6 text-center">
-                      <p className="text-[18px]">
+                      <p className="text-[18px] text-gray-200">
                         โอนค่าสมาชิกส่วนที่ 2 (30%)<br />
                         <span className="text-yellow-500 text-[22px] font-bold">
                           {(MEMBERSHIP_FEE_THB * 0.3).toFixed(2)} THB (≈ {(Number(calculatePolAmount()) * 0.3).toFixed(4)} POL)
                         </span>
-                        <p className="text-sm mt-2">ไปยังผู้แนะนำ</p>
+                        <p className="text-[16px] mt-2 text-gray-200">ไปยังผู้แนะนำ</p>
                       </p>
                       {data && (
                         <p className="text-sm text-gray-300 mt-2">
