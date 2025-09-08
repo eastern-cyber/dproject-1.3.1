@@ -3,6 +3,7 @@
 //Retry modal until each particular trasaction succeeded
 "use client";
 
+import { useTheme } from '@/context/ThemeContext';
 import { client } from "@/lib/client";
 import Image from "next/image";
 import { useEffect, useState } from "react";
@@ -507,8 +508,11 @@ const ConfirmPage = () => {
     );
   };
 
+  const { theme } = useTheme();
+
   return (
-    <main className="p-4 pb-10 min-h-[100vh] flex flex-col items-center bg-gray-950">
+    <main className="p-4 pb-10 min-h-[100vh] flex flex-col justify-center items-center bg-gray-950">
+      <div className="{theme === 'dark' ? 'bg-[#110030] text-white' : 'bg-white text-black'}">
       <div className="flex flex-col items-center justify-center p-6 md:p-10 m-2 md:m-5 border border-gray-800 rounded-lg max-w-md w-full">
         <Image
           src={dprojectIcon}
@@ -674,10 +678,12 @@ const ConfirmPage = () => {
           </div>
         )}
       </div>
+      </div>
       <div className='w-full mt-8'>
         <Footer />
       </div>
-    </main>
+      
+    </main>    
   );
 };
 
