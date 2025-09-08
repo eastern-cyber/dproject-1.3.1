@@ -1,5 +1,7 @@
 //src/app/referrer/[referrerId]/page.tsx
+
 "use client";
+import { useTheme } from '@/context/ThemeContext';
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import dprojectIcon from "../../../../public/DProjectLogo_650x600.svg";
@@ -21,6 +23,7 @@ export default function ReferrerDetails({ params }: { params: Promise<{ referrer
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
+    const { theme } = useTheme();
 
     useEffect(() => {
         const resolveParams = async () => {
@@ -81,6 +84,7 @@ export default function ReferrerDetails({ params }: { params: Promise<{ referrer
 
     return (
         <main className="p-4 pb-10 min-h-[100vh] flex flex-col items-center">
+        <div className={theme === 'dark' ? 'bg-[#110030] text-white' : 'bg-white text-black'}>
             <div className="flex flex-col items-center justify-center p-10 m-5 border border-gray-800 rounded-lg">
                 <Link href="/" passHref>
                     <Image
@@ -149,6 +153,7 @@ export default function ReferrerDetails({ params }: { params: Promise<{ referrer
             <div className='px-1 w-full'>
                 <Footer />
             </div>
+        </div>
         </main>
     );
 }
