@@ -10,10 +10,11 @@ export default function Footer() {
           <h2 className="text-[24px] text-yellow-500 font-bold hover:text-red-500">
             <Link href="/">DFI.Fund</Link>
         </h2>
-          <p className="mt-3 text-[18px] text-gray-300">
+          <p className="mt-1 text-[14px] text-gray-500">Version 1.3.1</p>
+          <p className="mt-1 text-[18px] text-gray-300">
           <b>D</b>Project<br /> <b>F</b>inancial<br /> <b>I</b>nnovation<br />
           </p>
-          <p className="mt-3 text-[14px] text-gray-500">Version 1.3.1</p>
+          <p className="hover:text-blue-300 hover:font-semibold"><Link href="/about">About - ข้อมูลโครงการ</Link></p>
         </div>
 
         {/* Navigation Links */}
@@ -21,9 +22,9 @@ export default function Footer() {
           <h3 className="text-[18px] font-semibold text-yellow-500 mb-4">Navigation</h3>
           <ul className="space-y-2 text-[15px] text-gray-300">
             <li className="hover:text-blue-300 hover:font-semibold"><Link href="/">Home - หน้าแรก</Link></li>
-            <li className="hover:text-blue-300 hover:font-semibold"><Link href="/about">About - ข้อมูลโครงการ</Link></li>
             <li className="hover:text-blue-300 hover:font-semibold"><Link href="/timeline">Timeline - ความคืบหน้า</Link></li>
             <li className="hover:text-blue-300 hover:font-semibold"><Link href="/member-area/">MemberArea - พื้นที่สมาชิก</Link></li>
+            <li className="hover:text-blue-300 hover:font-semibold"><Link href="/users">All Users - ผู้ใช้งานทั้งหมด</Link></li>
             <li className="hover:text-blue-300 hover:font-semibold"><Link href="http://www.dpjdd.com/">DOS - ตรวจสอบส่วนแบ่งรายได้</Link></li>
           </ul>
         </div>

@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import Footer from '@/components/Footer';
 
 interface User {
   id: number;
@@ -224,7 +225,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      <h1 className="text-3xl font-bold mb-8"><Link href="/">Admin Dashboard</Link></h1>
+      <h1 className="text-3xl font-bold mb-8"><Link href="/">รายละเอียดและสถิติผู้ใช้งาน</Link></h1>
       
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6">
@@ -439,7 +440,7 @@ export default function AdminDashboard() {
                     className="px-3 py-1 rounded-md border border-gray-300 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
                     aria-label="First page"
                   >
-                    First
+                    &lt;&lt;
                   </button>
                   
                   {/* Previous Page Button */}
@@ -449,12 +450,12 @@ export default function AdminDashboard() {
                     className="px-3 py-1 rounded-md border border-gray-300 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
                     aria-label="Previous page"
                   >
-                    &lt;&lt;
+                    &lt;
                   </button>
                   
                   {/* Page number buttons - Show max 10 pages */}
                   {(() => {
-                    const maxVisiblePages = 5;
+                    const maxVisiblePages = 3;
                     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
                     const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
                     
@@ -491,7 +492,7 @@ export default function AdminDashboard() {
                     className="px-3 py-1 rounded-md border border-gray-300 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
                     aria-label="Next page"
                   >
-                    &gt;&gt;
+                    &gt;
                   </button>
                   
                   {/* Last Page Button */}
@@ -501,7 +502,7 @@ export default function AdminDashboard() {
                     className="px-3 py-1 rounded-md border border-gray-300 dark:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
                     aria-label="Last page"
                   >
-                    Last
+                    &gt;&gt;
                   </button>
                 </nav>
               </div>
@@ -641,6 +642,9 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+      </div>
+      <div className='w-full mt-8'>
+        <Footer />
       </div>
     </div>
   );

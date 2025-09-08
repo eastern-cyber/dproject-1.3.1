@@ -28,7 +28,9 @@ export default function Home() {
           <div className="my-8 w-full flex justify-center">
             <ThirdwebResources />
           </div>
-          <Footer />
+          <div className='w-full mt-8'>
+            <Footer />
+          </div>
         </div>
       </main>
     );
