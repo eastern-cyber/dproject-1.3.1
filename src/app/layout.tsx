@@ -1,6 +1,7 @@
 //src/app/layout.tsx
 import type { Metadata } from 'next';
 import { ThirdwebProvider } from "thirdweb/react";
+import { ThemeProvider } from "../context/ThemeContext";
 import { Inter } from "next/font/google";
 import './globals.css';
 
@@ -24,10 +25,12 @@ export default function RootLayout({
         suppressHydrationWarning={true}
       >
         <ThirdwebProvider>
-        {/* Force dark theme   */}
-        <div className="dark-theme">
-        {children}
-        </div>
+        <ThemeProvider>
+          {/* Force dark theme   */}
+          <div className="dark-theme">
+          {children}
+          </div>
+        </ThemeProvider>
         </ThirdwebProvider>
       </body>
     </html>

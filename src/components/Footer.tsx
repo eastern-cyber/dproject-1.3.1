@@ -1,7 +1,14 @@
-import { Facebook, Instagram, Youtube } from "lucide-react";
+// src/components/Footer.tsx
+
+"use client";
+
+import { Facebook, Instagram, Youtube, Moon, Sun } from "lucide-react";
 import Link from "next/link";
+import { useTheme } from '../context/ThemeContext';
 
 export default function Footer() {
+  const { theme, toggleTheme } = useTheme();
+
   return (
     <footer className="bg-[#110030] text-white py-6 mt-8">
       <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -9,12 +16,24 @@ export default function Footer() {
         <div className="flex flex-col w-full justify-top items-right">
           <h2 className="text-[24px] text-yellow-500 font-bold hover:text-red-500">
             <Link href="/">DFI.Fund</Link>
-        </h2>
+          </h2>
           <p className="mt-1 text-[14px] text-gray-500">Version 1.3.1</p>
           <p className="mt-1 text-[18px] text-gray-300">
-          <b>D</b>Project<br /> <b>F</b>inancial<br /> <b>I</b>nnovation<br />
+            <b>D</b>Project<br /> <b>F</b>inancial<br /> <b>I</b>novation<br />
           </p>
-          <p className="hover:text-blue-300 hover:font-semibold"><Link href="/about">About - ข้อมูลโครงการ</Link></p>
+          <div className="flex items-center mt-2 cursor-pointer" onClick={toggleTheme}>
+            {theme === 'light' ? (
+              <>
+                <Moon className="w-4 h-4 mr-2" />
+                <span>Switch to Dark</span>
+              </>
+            ) : (
+              <>
+                <Sun className="w-4 h-4 mr-2" />
+                <span>Switch to Light</span>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Navigation Links */}
@@ -22,6 +41,7 @@ export default function Footer() {
           <h3 className="text-[18px] font-semibold text-yellow-500 mb-4">Navigation</h3>
           <ul className="space-y-2 text-[15px] text-gray-300">
             <li className="hover:text-blue-300 hover:font-semibold"><Link href="/">Home - หน้าแรก</Link></li>
+            <li className="hover:text-blue-300 hover:font-semibold"><Link href="/about">About - ข้อมูลโครงการ</Link></li>
             <li className="hover:text-blue-300 hover:font-semibold"><Link href="/timeline">Timeline - ความคืบหน้า</Link></li>
             <li className="hover:text-blue-300 hover:font-semibold"><Link href="/member-area/">MemberArea - พื้นที่สมาชิก</Link></li>
             <li className="hover:text-blue-300 hover:font-semibold"><Link href="/users">All Users - ผู้ใช้งานทั้งหมด</Link></li>

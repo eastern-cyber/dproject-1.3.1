@@ -1,5 +1,6 @@
 "use client";
 
+import { useTheme } from '../context/ThemeContext';
 import Image from "next/image";
 import { useActiveAccount, useReadContract } from "thirdweb/react";
 import dprojectIcon from "../../public/DProjectLogo_650x600.svg";
@@ -11,6 +12,8 @@ import Footer from "@/components/Footer";
 
 export default function Home() {
   const account = useActiveAccount();
+  const { theme } = useTheme();
+
 
   const { data: contractMetadata } = useReadContract(
     getContractMetadata,
@@ -23,6 +26,7 @@ export default function Home() {
   {
     return (
       <main className="min-h-screen w-full flex flex-col">
+      <div className={theme === 'dark' ? 'bg-[#110030] text-white' : 'bg-white text-black'}>
         <div className="flex-grow flex flex-col items-center justify-center py-20 w-full">
           <Header />
           <div className="my-8 w-full flex justify-center">
@@ -32,6 +36,7 @@ export default function Home() {
             <Footer />
           </div>
         </div>
+      </div>
       </main>
     );
   }
