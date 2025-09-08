@@ -127,7 +127,7 @@ export default function UserDetails({ params }: { params: Promise<{ userId: stri
                     <WalletConnect />
                 </div>
                 <div className="flex flex-col items-center justify-center p-2 m-2">
-                    <p className="flex flex-col items-center justify-center text-[18px] m-2 text-center">
+                    <p className="flex flex-col items-center justify-center text-[18px] text-gray-200 m-2 text-center">
                         <b>ขอแสดงความยินดี กระบวนการยืนยันสมาชิกภาพของท่าน เสร็จสมบูรณ์แล้ว</b>
                     </p>
                     
@@ -173,7 +173,7 @@ export default function UserDetails({ params }: { params: Promise<{ userId: stri
                                 </span>
                             </p>
                             
-                            <p className="text-[15px] text-gray-300">
+                            {/* <p className="text-[15px] text-gray-300">
                                 <b>อีเมล:</b>
                                 <span className="text-blue-400 ml-2 block mt-1">
                                     {userData?.email || "ไม่พบข้อมูล"}
@@ -185,7 +185,7 @@ export default function UserDetails({ params }: { params: Promise<{ userId: stri
                                 <span className="text-yellow-400 ml-2 block mt-1">
                                     {userData?.name || "ไม่พบข้อมูล"}
                                 </span>
-                            </p>
+                            </p> */}
                             
                             <p className="text-[15px] text-gray-300">
                                 <b>Token ID:</b>
