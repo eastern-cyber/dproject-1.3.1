@@ -543,12 +543,12 @@ const ConfirmPage = () => {
                   <div className="p-6 bg-gray-900 rounded-lg border border-gray-700 max-w-md">
                     <h3 className="text-xl font-bold mb-4 text-center">ยืนยันการชำระครั้งที่ 1</h3>
                     <div className="mb-6 text-center">
-                      <p className="text-[18px]">
+                      <p className="text-[18px] text-gray-200">
                         โอนค่าสมาชิกส่วนที่ 1 (70%)<br />
                         <span className="text-yellow-500 text-[22px] font-bold">
                           {(MEMBERSHIP_FEE_THB * 0.7).toFixed(2)} THB (≈ {(Number(calculatePolAmount()) * 0.7).toFixed(4)} POL)
                         </span>
-                        <p className="text-sm mt-2">ไปยังระบบ</p>
+                        <p className="text-[16px] mt-2 text-gray-200">ไปยังระบบ</p>
                       </p>
                       {exchangeRate && adjustedExchangeRate && (
                         <div className="mt-3 text-sm text-gray-300">
@@ -556,7 +556,7 @@ const ConfirmPage = () => {
                         </div>
                       )}
                       {account && (
-                        <p className="mt-3 text-[16px]">
+                        <p className="mt-3 text-[16px] text-gray-200">
                           POL ในกระเป๋าของคุณ: <span className="text-green-400">{polBalance}</span>
                         </p>
                       )}
