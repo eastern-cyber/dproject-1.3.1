@@ -432,7 +432,7 @@ const ConfirmPage = () => {
 
     return (
       <div className="flex flex-col gap-4 md:gap-8">
-        <p className="mt-4 text-center text-[18px]">
+        <p className="mt-4 text-center text-[18px] text-gray-200">
           <b>ค่าสมาชิก: <p className="text-yellow-500 text-[22px]">{MEMBERSHIP_FEE_THB} THB
           {adjustedExchangeRate && (
             <>
@@ -460,7 +460,7 @@ const ConfirmPage = () => {
               className="flex flex-col mt-1 border border-zinc-100 px-4 py-3 rounded-lg bg-gray-600 cursor-not-allowed"
               disabled
             >
-              <span className="text-[18px]">ท่านเป็นสมาชิกอยู่แล้ว</span>
+              <span className="text-[18px] text-gray-900">ท่านเป็นสมาชิกอยู่แล้ว</span>
             </button>
           ) : (
             <button
@@ -478,7 +478,7 @@ const ConfirmPage = () => {
             </button>
           )}
         </div>
-        <p className="text-center text-[18px]">
+        <p className="text-center text-[18px] text-gray-200">
           <p>
           เพื่อสนับสนุน <b>แอพพลิเคชั่น <span className="text-[26px] text-red-600">ก๊อกๆๆ</span></b> <br />
           ถือเป็นการยืนยันสถานภาพ
@@ -489,7 +489,7 @@ const ConfirmPage = () => {
           ภายใต้การแนะนำของ<br />
         </p>
         {data && (
-          <div className="text-center text-[18px] bg-gray-900 p-4 border border-zinc-300 rounded-lg">
+          <div className="text-center text-[18px] text-gray-300 bg-gray-900 p-4 border border-zinc-300 rounded-lg">
             <p className="text-lg text-gray-300">
               <b>เลขกระเป๋าผู้แนะนำ:</b> {data.var1.slice(0, 6)}...{data.var1.slice(-4)}
             </p>
@@ -523,7 +523,7 @@ const ConfirmPage = () => {
           }}
           priority
         />
-        <h1 className="p-4 text-2xl font-semibold md:font-bold tracking-tighter text-center">
+        <h1 className="p-4 text-2xl text-gray-200 font-semibold md:font-bold tracking-tighter text-center">
           ยืนยันการเป็นสมาชิก
         </h1>
         
@@ -647,7 +647,7 @@ const ConfirmPage = () => {
                 </PlanAConfirmModal>
               )}
             </div>
-            <div className="w-full text-center flex flex-col items-center justify-center p-3 m-2 border border-gray-800 rounded-lg break-all">
+            <div className="w-full text-center text-gray-200 flex flex-col items-center justify-center p-3 m-2 border border-gray-800 rounded-lg break-all">
               <p className="mb-4 font-medium"><u>ข้อมูลเพื่อการตรวจสอบระบบ</u></p> 
               <p className="mb-3">เลขกระเป๋าผู้แนะนำ:<br /> {data.var1}</p>
               <p className="mb-3">อีเมล: {data.var2}</p>
