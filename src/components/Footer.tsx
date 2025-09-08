@@ -13,7 +13,7 @@ export default function Footer() {
           <p className="mt-3 text-[18px] text-gray-300">
           <b>D</b>Project<br /> <b>F</b>inancial<br /> <b>I</b>nnovation<br />
           </p>
-          <p className="mt-3 text-[14px] text-gray-500">Version 1.3.0</p>
+          <p className="mt-3 text-[14px] text-gray-500">Version 1.3.1</p>
         </div>
 
         {/* Navigation Links */}
