@@ -100,18 +100,18 @@ function Header() {
       <p className="text-2xl md:text-6xl font-semibold md:font-bold tracking-tighter mb-6 text-zinc-800 text-center">
         <span className="inline-block text-blue-500"> DProject </span>
         &nbsp;&nbsp;&nbsp;
-        <span className="inline-block -skew-x-6 text-gray-600 dark:text-white "> Login </span>
+        <span className="inline-block -skew-x-6 text-gray-500"> Login </span>
         &nbsp;
-        <span className="dark:text-zinc-500 inline-block mx-1"> + </span>
+        <span className="text-zinc-400 inline-block mx-1"> + </span>
         &nbsp;
-        <span className="inline-block -skew-x-6 dark:text-white"> Register </span>
+        <span className="inline-block -skew-x-6 text-gray-500"> Register </span>
       </p>
-      <p className="text-xl text-center dark:text-zinc-200 mb-6">
+      <p className="text-xl text-center text-zinc-400 mb-6">
         Version 1.3.1
       </p>
-      <p className="text-center text-zinc-300 text-base mb-8 max-w-2xl px-4">
+      <p className="text-center text-zinc-500 text-base mb-8 max-w-2xl px-4">
         ล็อกอินด้วยอีเมลล์{" "}
-        <code className="bg-zinc-800 text-zinc-300 px-2 rounded py-1 text-sm mx-1">
+        <code className="bg-zinc-800 text-zinc-500 px-2 rounded py-1 text-sm mx-1">
           OTP
         </code>{" "}
         e-mail Login
@@ -156,8 +156,8 @@ function ArticleCard(props: {
       className="flex flex-col border border-zinc-800 p-4 rounded-lg hover:bg-zinc-900 transition-colors hover:border-zinc-700 h-full"
     >
       <article>
-        <h2 className="text-lg font-semibold mb-2">{props.title}</h2>
-        <p className="text-sm text-zinc-400">{props.description}</p>
+        <p className="text-lg text-yellow-500 font-semibold mb-2">{props.title}</p>
+        <p className="text-sm text-zinc-500">{props.description}</p>
       </article>
     </Link>
   );
