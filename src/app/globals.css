@@ -6,19 +6,56 @@
 @tailwind utilities;
 
 :root {
+  /* Base variables */
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
+  --background: #ffffff;
+  --foreground: #171717;
+  
+  /* Font variables */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  
+  /* Typography */
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* Dark mode preferences */
 @media (prefers-color-scheme: dark) {
   :root {
     --foreground-rgb: 255, 255, 255;
     --background-start-rgb: 17, 0, 48;
     --background-end-rgb: 0, 0, 0;
+    --background: #110022;
+    --foreground: #ededed;
   }
 }
 
+/* Light theme class */
+.light {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+/* Dark theme class */
+.dark {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 17, 0, 48;
+  --background-end-rgb: 0, 0, 0;
+  --background: #110022;
+  --foreground: #ededed;
+}
+
+/* Base styles */
 body {
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(
@@ -27,47 +64,18 @@ body {
       rgb(var(--background-end-rgb))
     )
     rgb(var(--background-start-rgb));
+  font-family: var(--font-sans);
 }
 
-/* Light theme specific styles */
-.light {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
-}
-
-/* Dark theme specific styles */
-.dark {
-  --foreground-rgb: 255, 255, 255;
-  --background-start-rgb: 17, 0, 48;
-  --background-end-rgb: 0, 0, 0;
-}
-
-/* Add any additional theme-specific styling as needed */
-
-:root {
-  line-height: 1.5;
-	font-weight: 400;
-	font-synthesis: none;
-	text-rendering: optimizeLegibility;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
-	font-family: 'Inter', sans-serif;
-	font-optical-sizing: auto;
-	font-style: normal;
-	font-variation-settings: 'slnt' 0;
-  --background: #ffffff;
-  --foreground: #171717;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
-}
+/* Tailwind layer */
 @layer base {
-    body {
-        @apply text-neutral-200;
-        background-color: #110022;
-    }
+  body {
+    color: var(--foreground);
+    background: var(--background);
+  }
 }
 
+/* Theme variables for Tailwind */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -75,25 +83,11 @@ body {
   --font-mono: var(--font-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #110022;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background-color: #220040;
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans);
-}
-
-/* Additional improvements for better readability */
+/* Typography improvements */
 h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
   line-height: 1.3;
-  color:beige;
+  color: #f5f5dc; /* beige color */
 }
 
 p {

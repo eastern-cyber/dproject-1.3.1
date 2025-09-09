@@ -84,7 +84,7 @@ export default function ReferrerDetails({ params }: { params: Promise<{ referrer
 
     return (
         <main className="p-4 pb-10 min-h-[100vh] flex flex-col items-center">
-        <div className={theme === 'dark' ? 'bg-[#110030] text-white' : 'bg-white text-black'}>
+        <div className={theme === 'dark' ? 'bg-[#110030] text-gray-200' : 'bg-white text-gray-800'}>
             <div className="flex flex-col items-center justify-center p-10 m-5 border border-gray-800 rounded-lg">
                 <Link href="/" passHref>
                     <Image
@@ -96,7 +96,7 @@ export default function ReferrerDetails({ params }: { params: Promise<{ referrer
                         }}
                     />
                 </Link>
-                <p className="p-4 md:text-2xl text-2xl font-semibold md:font-bold tracking-tighter text-emerald-950 dark:text-amber-300">
+                <p className="p-4 text-2xl {theme === 'dark' ? 'text-amber-200' : ' text-gray-800'} font-semibold md:font-bold tracking-tighter text-center">
                     สมัครใช้งาน
                 </p>
                 <div className="flex justify-center m-5">
@@ -140,10 +140,10 @@ export default function ReferrerDetails({ params }: { params: Promise<{ referrer
                 </div>
                 
                 {!loading && !error && referrerData && (
-                    <div className="flex flex-col items-center mb-6">
+                    <div className="flex flex-col items-center mb-6 hover:text-amber-100">
                         <button 
                             onClick={navigateToConfirmPage} 
-                            className="flex flex-col mt-1 border border-zinc-100 px-4 py-3 rounded-lg dark:bg-red-400 bg-red-700 hover:bg-zinc-800 transition-colors hover:border-zinc-400"
+                            className="dark:text-amber-100 flex flex-col mt-1 border border-zinc-100 px-4 py-3 rounded-lg dark:bg-red-500 bg-red-700 hover:bg-zinc-800 hover:text-amber-100 transition-colors hover:border-zinc-400"
                         >
                             ดำเนินการต่อ
                         </button>

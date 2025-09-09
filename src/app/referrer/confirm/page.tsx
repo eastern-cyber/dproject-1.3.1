@@ -523,9 +523,9 @@ const ConfirmPage = () => {
           }}
           priority
         />
-        <h1 className="p-4 text-2xl text-gray-200 font-semibold md:font-bold tracking-tighter text-center">
+        <p className="p-4 text-2xl text-amber-400 font-semibold md:font-bold tracking-tighter text-center">
           ยืนยันการเป็นสมาชิก
-        </h1>
+        </p>
         
         <WalletConnect />
         
