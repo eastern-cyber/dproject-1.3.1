@@ -11,17 +11,18 @@ export default function Footer() {
 
   return (
     <footer className="w-full py-6 mt-8">
-      <div className="dark-theme">
-      {/* <div className={theme === 'dark' ? 'bg-[#110033] text-amber-100' : 'bg-amber-50 text-gray-900'}> */}
-        <div className="bg-[#020233] max-w-6xl mx-auto mt-8 py-4 px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className={theme === 'dark' ? 'bg-[#040444] text-amber-100' : 'bg-amber-50 text-gray-900'}>
+        <div className="max-w-6xl mx-auto mt-8 py-4 px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Logo & Description */}
           <div className="flex flex-col w-full justify-top items-right">
             <p className="text-[24px] text-yellow-500 font-bold hover:text-red-500">
               <Link href="/">DFI.Fund</Link>
             </p>
-            <p className="mt-1 text-[18px] text-gray-300">
+            <div className={theme === 'dark' ? 'text-gray-300' : 'text-gray-900'}>
+            <p className="mt-1 text-[18px]">
               <b>D</b>Project<br /> <b>F</b>inancial<br /> <b>I</b>novation<br />
             </p>
+            </div>
             <p className="mt-3 text-[14px] text-gray-500">Version 1.3.1</p>
           </div>
 
@@ -42,14 +43,14 @@ export default function Footer() {
           <div className="flex flex-col justify-top items-center">
             <p className="flex text-[18px] font-semibold text-yellow-500 mb-4">Follow DProject</p>
               <div className="flex space-x-5 items-center">
-                <Link href="https://www.facebook.com/people/KOK-KOK-KOK/61573998052437/" target="_blank" aria-label="Facebook"><Facebook className="w-6 h-6 -gray-300 hover:text-blue-500" /></Link>
-                <Link href="#" target="_blank" aria-label="X (formerly Twitter)"><span className="text-[23px] font-bold text-gray-300 hover:text-yellow-400">X</span></Link>
-                <Link href="https://www.youtube.com/@DProject-w5z" target="_blank" aria-label="YouTube Channel"><Youtube className="w-7 h-7 text-gray-300 hover:text-red-500" /></Link>            
-                <Link href="https://www.instagram.com/kokkokkok.3k?igsh=emNrZ2tta2drdzV2" target="_blank" aria-label="Instagram"><Instagram className="w-6 h-6 text-gray-300 hover:text-orange-500" /></Link>
-                <Link href="https://lin.ee/xGUnJcK" target="_blank" aria-label="Line App"><span className="text-[22px] font-bold text-gray-300 hover:text-yellow-400">Line</span></Link>
+                <Link href="https://www.facebook.com/people/KOK-KOK-KOK/61573998052437/" target="_blank" aria-label="Facebook"><Facebook className="w-6 h-6 hover:text-blue-500" /></Link>
+                <Link href="#" target="_blank" aria-label="X (formerly Twitter)"><span className="text-[23px] font-bold hover:text-yellow-400">X</span></Link>
+                <Link href="https://www.youtube.com/@DProject-w5z" target="_blank" aria-label="YouTube Channel"><Youtube className="w-7 h-7 hover:text-red-500" /></Link>            
+                <Link href="https://www.instagram.com/kokkokkok.3k?igsh=emNrZ2tta2drdzV2" target="_blank" aria-label="Instagram"><Instagram className="w-6 h-6 hover:text-orange-500" /></Link>
+                <Link href="https://lin.ee/xGUnJcK" target="_blank" aria-label="Line App"><span className="text-[22px] font-bold hover:text-yellow-400">Line</span></Link>
               </div>
               <Link target="_blank" href="https://3k.dfi.fund/templates/index.html"><p className="text-[20px] font-bold mt-4"><span className="text-red-500">Kok</span><span className="text-yellow-500">Kok</span><span className="text-green-500">Kok</span><sup className="text-[10px] font-bold">TM</sup></p></Link>
-              <p className="text-[16px] text-gray-200 mt-0"><b>Web3 SuperApp</b> for the Future.</p>
+              <p className={theme === 'dark' ? 'bg-[#040444] text-amber-100' : 'bg-amber-50 text-gray-900'}><b>Web3 SuperApp</b> for the Future.</p>
                 <div className="flex items-center mt-2 cursor-pointer" onClick={toggleTheme}>
                   {theme === 'light' ? (
                     <>

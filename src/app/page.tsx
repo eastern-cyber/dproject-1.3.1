@@ -123,25 +123,25 @@ function Header() {
 
 function ThirdwebResources() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-6xl px-4">
-      <ArticleCard
-        title="เกี่ยวกับโครงการ DProject"
-        href="/about"
-        description="More detail about DProject"
-      />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-6xl px-4">
+        <ArticleCard
+          title="เกี่ยวกับโครงการ DProject"
+          href="/about"
+          description="More detail about DProject"
+        />
 
-      <ArticleCard
-        title="ต้นแบบ Application ก๊อกๆๆ"
-        href="https://3k.dfi.fund/templates/index.html/"
-        description="3K หรือ Kok Kok Kok จะต่อยอดจาก SocialApp ยอดนิยม"
-      />
+        <ArticleCard
+          title="ต้นแบบ Application ก๊อกๆๆ"
+          href="https://3k.dfi.fund/templates/index.html/"
+          description="3K หรือ Kok Kok Kok จะต่อยอดจาก SocialApp ยอดนิยม"
+        />
 
-      <ArticleCard
-        title="DProject Timeline"
-        href="/timeline"
-        description="แสดงรายละเอียดไทม์ไลน์และความคืบหน้าของโครงการ"
-      />
-    </div>
+        <ArticleCard
+          title="DProject Timeline"
+          href="/timeline"
+          description="แสดงรายละเอียดไทม์ไลน์และความคืบหน้าของโครงการ"
+        />
+      </div>
   );
 }
 
