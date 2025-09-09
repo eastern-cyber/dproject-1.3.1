@@ -10,7 +10,7 @@ export default function Footer() {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <footer className="dark:bg-[#110030] text-white py-6 mt-8">
+    <footer className="bg-blue-100  text-shadow-gray-800 dark:bg-[#110030] dark:text-amber-100 py-6 mt-8">
       <div className="{theme === 'dark' ? 'bg-[#110030] text-white' : 'bg-white text-black'}">
         <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Logo & Description */}

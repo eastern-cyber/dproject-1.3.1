@@ -96,9 +96,9 @@ export default function ReferrerDetails({ params }: { params: Promise<{ referrer
                         }}
                     />
                 </Link>
-                <h1 className="p-4 md:text-2xl text-2xl font-semibold md:font-bold tracking-tighter">
+                <p className="p-4 md:text-2xl text-2xl font-semibold md:font-bold tracking-tighter text-emerald-950 dark:text-amber-300">
                     สมัครใช้งาน
-                </h1>
+                </p>
                 <div className="flex justify-center m-5">
                     <WalletConnect />
                 </div>
@@ -130,7 +130,7 @@ export default function ReferrerDetails({ params }: { params: Promise<{ referrer
                         <p className="text-gray-600 text-sm mt-2">ไม่พบข้อมูลผู้แนะนำ</p>
                     )}
                     
-                    <div className="items-centerflex border border-gray-400 bg-[#2b2b59] p-2.5 mt-5 w-full">
+                    <div className="items-center flex border border-gray-900 bg-gray-500 p-2.5 mt-5 w-full">
                         <p className="text-[18px] break-all">
                             <center>
                             {resolvedParams.referrerId ? `${resolvedParams.referrerId}` : "ไม่พบกระเป๋า"}
@@ -143,7 +143,7 @@ export default function ReferrerDetails({ params }: { params: Promise<{ referrer
                     <div className="flex flex-col items-center mb-6">
                         <button 
                             onClick={navigateToConfirmPage} 
-                            className="flex flex-col mt-1 border border-zinc-100 px-4 py-3 rounded-lg bg-red-700 hover:bg-zinc-800 transition-colors hover:border-zinc-400"
+                            className="flex flex-col mt-1 border border-zinc-100 px-4 py-3 rounded-lg dark:bg-red-400 bg-red-700 hover:bg-zinc-800 transition-colors hover:border-zinc-400"
                         >
                             ดำเนินการต่อ
                         </button>
