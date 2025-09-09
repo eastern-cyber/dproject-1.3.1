@@ -13,7 +13,7 @@ export default function Footer() {
     <footer className="w-full py-6 mt-8">
       <div className="dark-theme">
       {/* <div className={theme === 'dark' ? 'bg-[#110033] text-amber-100' : 'bg-amber-50 text-gray-900'}> */}
-        <div className="max-w-6xl mx-auto mt-8 py-4 px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="bg-[#020233] max-w-6xl mx-auto mt-8 py-4 px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Logo & Description */}
           <div className="flex flex-col w-full justify-top items-right">
             <p className="text-[24px] text-yellow-500 font-bold hover:text-red-500">
