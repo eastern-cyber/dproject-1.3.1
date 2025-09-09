@@ -27,9 +27,9 @@ export default function RootLayout({
         <ThirdwebProvider>
         <ThemeProvider>
           {/* Force dark theme <div className="dark-theme">  */}
-          
+          <div className="dark-theme">
           {children}
-          
+          </div>
         </ThemeProvider>
         </ThirdwebProvider>
       </body>

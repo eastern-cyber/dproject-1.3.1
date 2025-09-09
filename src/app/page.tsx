@@ -26,7 +26,7 @@ export default function Home() {
   {
     return (
       <main className="min-h-screen w-full flex flex-col">
-      <div className={theme === 'dark' ? 'bg-[#110030] text-white' : 'bg-white text-black'}>
+      <div className={theme === 'dark' ? 'bg-[#110033] text-amber-100' : 'bg-gray-50 text-gray-900'}>
         <div className="flex-grow flex flex-col items-center justify-center py-20 w-full">
           <Header />
           <div className="my-8 w-full flex justify-center">
@@ -97,16 +97,16 @@ function Header() {
         />
       </Link>
       <p className="my-4"></p>
-      <h2 className="text-2xl md:text-6xl font-semibold md:font-bold tracking-tighter mb-6 text-zinc-100 text-center">
+      <p className="text-2xl md:text-6xl font-semibold md:font-bold tracking-tighter mb-6 text-zinc-800 text-center">
         <span className="inline-block text-blue-500"> DProject </span>
         &nbsp;&nbsp;&nbsp;
-        <span className="inline-block -skew-x-6 text-white"> Login </span>
+        <span className="inline-block -skew-x-6 text-gray-600 dark:text-white "> Login </span>
         &nbsp;
-        <span className="text-zinc-300 inline-block mx-1"> + </span>
+        <span className="dark:text-zinc-500 inline-block mx-1"> + </span>
         &nbsp;
-        <span className="inline-block -skew-x-6 text-white"> Register </span>
-      </h2>
-      <p className="text-xl text-center text-zinc-200 mb-6">
+        <span className="inline-block -skew-x-6 dark:text-white"> Register </span>
+      </p>
+      <p className="text-xl text-center dark:text-zinc-200 mb-6">
         Version 1.3.1
       </p>
       <p className="text-center text-zinc-300 text-base mb-8 max-w-2xl px-4">
