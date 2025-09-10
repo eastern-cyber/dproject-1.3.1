@@ -546,7 +546,8 @@ const ConfirmPage = () => {
                       <p className="text-[18px] text-gray-200">
                         โอนค่าสมาชิกส่วนที่ 1 (70%)<br />
                         <span className="text-yellow-500 text-[22px] font-bold">
-                          {(MEMBERSHIP_FEE_THB * 0.7).toFixed(2)} THB (≈ {(Number(calculatePolAmount()) * 0.7).toFixed(4)} POL)
+                          {(MEMBERSHIP_FEE_THB * 0.7).toFixed(2)} THB <br />
+                          (≈ {(Number(calculatePolAmount()) * 0.7).toFixed(4)} POL)
                         </span>
                         <p className="text-[16px] mt-2 text-gray-200">ไปยังระบบ</p>
                       </p>
