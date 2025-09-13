@@ -1,3 +1,5 @@
+// src/lib/client.ts
+
 import { createThirdwebClient } from "thirdweb";
 
 // Replace this with your client ID string

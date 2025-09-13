@@ -1,3 +1,5 @@
+// utils/contracts.ts
+
 import { chain } from "@/lib/chain";
 import { client } from "@/lib/client";
 import { getContract } from "thirdweb";

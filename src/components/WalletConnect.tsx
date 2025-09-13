@@ -1,3 +1,5 @@
+// src/components/WalletConnect.tsx
+
 "use client";
 
 import { ConnectButton, darkTheme } from "thirdweb/react";
