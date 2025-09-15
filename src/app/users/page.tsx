@@ -18,12 +18,7 @@ interface User {
     POL?: number;
     rateTHBPOL?: number;
     txHash?: string;
-  } | null;
-  plan_b: {
-    dateTime?: string;
-    POL?: number;
-    rateTHBPOL?: number;
-    txHash?: string;
+    status?: string; // Add status field if needed
   } | null;
   created_at: string;
   updated_at: string;
@@ -65,7 +60,14 @@ export default function AdminDashboard() {
       }
       
       const data = await response.json();
-      setUsers(data || []);
+      
+      // Ensure plan_a exists and has proper structure
+      const usersWithPlan = data.map((user: any) => ({
+        ...user,
+        plan_a: user.plan_a || null
+      }));
+      
+      setUsers(usersWithPlan || []);
     } catch (error) {
       console.error('Error fetching users:', error);
       setError(error instanceof Error ? error.message : 'Failed to fetch users');
@@ -89,30 +91,44 @@ export default function AdminDashboard() {
     }
   };
 
-  // Handle retry
-  const handleRetry = () => {
-    fetchUsers();
-    fetchStats();
-  };
+    // Handle retry
+    const handleRetry = () => {
+      fetchUsers();
+      fetchStats();
+    };
+    
+    // Add status filter state
+    const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  // Filter users based on search term
-  const filteredUsers = useMemo(() => {
-    if (!users || users.length === 0) return [];
-    
-    if (!searchTerm) return users;
-    
-    const term = searchTerm.toLowerCase();
-    return users.filter(user => {
-      // Safely check each field for null/undefined before calling toLowerCase()
-      const userIdMatch = user.user_id?.toLowerCase().includes(term) || false;
-      const emailMatch = user.email?.toLowerCase().includes(term) || false;
-      const nameMatch = user.name?.toLowerCase().includes(term) || false;
-      const tokenIdMatch = user.token_id?.toLowerCase().includes(term) || false;
-      const referrerMatch = user.referrer_id?.toLowerCase().includes(term) || false;
+    // Update filteredUsers to include status filtering
+    const filteredUsers = useMemo(() => {
+      if (!users || users.length === 0) return [];
       
-      return userIdMatch || emailMatch || nameMatch || tokenIdMatch || referrerMatch;
-    });
-  }, [users, searchTerm]);
+      let filtered = users;
+      
+      // Apply search term filter
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        filtered = filtered.filter(user => {
+          const userIdMatch = user.user_id?.toLowerCase().includes(term) || false;
+          const emailMatch = user.email?.toLowerCase().includes(term) || false;
+          const nameMatch = user.name?.toLowerCase().includes(term) || false;
+          const tokenIdMatch = user.token_id?.toLowerCase().includes(term) || false;
+          const referrerMatch = user.referrer_id?.toLowerCase().includes(term) || false;
+          
+          return userIdMatch || emailMatch || nameMatch || tokenIdMatch || referrerMatch;
+        });
+      }
+      
+      // Apply status filter
+      if (statusFilter !== 'all') {
+        filtered = filtered.filter(user => 
+          user.plan_a?.status === statusFilter
+        );
+      }
+    
+      return filtered;
+    }, [users, searchTerm, statusFilter]);
 
   // Sort users
   const sortedUsers = useMemo(() => {
@@ -154,56 +170,44 @@ export default function AdminDashboard() {
   };
 
   // Helper function to safely calculate total POL from plan_a and plan_b
-  const calculateTotalPOL = () => {
-    if (!users || users.length === 0) return '0.00';
+const calculateTotalPOL = () => {
+  if (!users || users.length === 0) return '0.00';
+  
+  const total = users.reduce((sum, user) => {
+    let userPol = 0;
     
-    const total = users.reduce((sum, user) => {
-      let userPol = 0;
-      
-      // Add POL from plan_a if it exists
-      if (user.plan_a && user.plan_a.POL) {
-        userPol += typeof user.plan_a.POL === 'string' ? parseFloat(user.plan_a.POL) : user.plan_a.POL;
-      }
-      
-      // Add POL from plan_b if it exists
-      if (user.plan_b && user.plan_b.POL) {
-        userPol += typeof user.plan_b.POL === 'string' ? parseFloat(user.plan_b.POL) : user.plan_b.POL;
-      }
-      
-      return sum + userPol;
-    }, 0);
+    // Add POL from plan_a if it exists
+    if (user.plan_a && user.plan_a.POL) {
+      userPol += typeof user.plan_a.POL === 'string' ? parseFloat(user.plan_a.POL) : user.plan_a.POL;
+    }
     
-    return total.toFixed(2);
-  };
+    return sum + userPol;
+  }, 0);
+  
+  return total.toFixed(2);
+};
 
   // Helper function to safely calculate average rate from plan_a and plan_b
-  const calculateAverageRate = () => {
-    if (!users || users.length === 0) return '0.00';
-    
-    let totalRate = 0;
-    let rateCount = 0;
-    
-    users.forEach(user => {
-      // Add rate from plan_a if it exists
-      if (user.plan_a && user.plan_a.rateTHBPOL) {
-        const rate = typeof user.plan_a.rateTHBPOL === 'string' ? 
-          parseFloat(user.plan_a.rateTHBPOL) : user.plan_a.rateTHBPOL;
-        totalRate += rate;
-        rateCount++;
-      }
-      
-      // Add rate from plan_b if it exists
-      if (user.plan_b && user.plan_b.rateTHBPOL) {
-        const rate = typeof user.plan_b.rateTHBPOL === 'string' ? 
-          parseFloat(user.plan_b.rateTHBPOL) : user.plan_b.rateTHBPOL;
-        totalRate += rate;
-        rateCount++;
-      }
-    });
-    
-    if (rateCount === 0) return '0.00';
-    return (totalRate / rateCount).toFixed(2);
-  };
+  // Remove plan_b references
+const calculateAverageRate = () => {
+  if (!users || users.length === 0) return '0.00';
+  
+  let totalRate = 0;
+  let rateCount = 0;
+  
+  users.forEach(user => {
+    // Add rate from plan_a if it exists
+    if (user.plan_a && user.plan_a.rateTHBPOL) {
+      const rate = typeof user.plan_a.rateTHBPOL === 'string' ? 
+        parseFloat(user.plan_a.rateTHBPOL) : user.plan_a.rateTHBPOL;
+      totalRate += rate;
+      rateCount++;
+    }
+  });
+  
+  if (rateCount === 0) return '0.00';
+  return (totalRate / rateCount).toFixed(2);
+};
 
   // Handle sort
   const handleSort = (field: SortField) => {
@@ -247,14 +251,10 @@ export default function AdminDashboard() {
       )}
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
           <h2 className="text-xl font-semibold mb-2">Total Users</h2>
           <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{stats.total}</p>
-        </div>
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-2">Active Today</h2>
-          <p className="text-3xl font-bold text-green-600 dark:text-green-400">0</p>
         </div>
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
           <h2 className="text-xl font-semibold mb-2">Total POL</h2>
@@ -337,14 +337,9 @@ export default function AdminDashboard() {
                     </th>
                     <th className="px-4 py-2 text-left">Referrer</th>
                     
-                    {/* Plan A Header with Sub-columns */}
-                    <th colSpan={3} className="px-4 py-2 text-center bg-gray-100 dark:bg-gray-600">
-                      Plan A
-                    </th>
-                    
-                    {/* Plan B Header with Sub-columns */}
-                    <th colSpan={3} className="px-4 py-2 text-center bg-gray-100 dark:bg-gray-600">
-                      Plan B
+                    {/* Plan A Header with Sub-columns - Removed Plan B */}
+                    <th colSpan={4} className="px-4 py-2 text-center bg-gray-100 dark:bg-gray-600">
+                      PlanA Details
                     </th>
                     
                     <th 
@@ -355,20 +350,16 @@ export default function AdminDashboard() {
                     </th>
                   </tr>
                   
-                  {/* Sub-header row for Plan A and Plan B details */}
+                  {/* Sub-header row for Plan details */}
                   <tr className="bg-gray-50 dark:bg-gray-700">
                     {/* Empty cells for previous columns */}
                     <th colSpan={5} className="px-4 py-2"></th>
                     
-                    {/* Plan A Sub-columns */}
+                    {/* Plan Sub-columns */}
                     <th className="px-2 py-1 text-left text-xs font-medium text-gray-600 dark:text-gray-300">POL</th>
                     <th className="px-2 py-1 text-left text-xs font-medium text-gray-600 dark:text-gray-300">Rate</th>
                     <th className="px-2 py-1 text-left text-xs font-medium text-gray-600 dark:text-gray-300">Date</th>
-                    
-                    {/* Plan B Sub-columns */}
-                    <th className="px-2 py-1 text-left text-xs font-medium text-gray-600 dark:text-gray-300">POL</th>
-                    <th className="px-2 py-1 text-left text-xs font-medium text-gray-600 dark:text-gray-300">Rate</th>
-                    <th className="px-2 py-1 text-left text-xs font-medium text-gray-600 dark:text-gray-300">Date</th>
+                    <th className="px-2 py-1 text-left text-xs font-medium text-gray-600 dark:text-gray-300">Status</th>
                     
                     {/* Empty cell for remaining column */}
                     <th className="px-4 py-2"></th>
@@ -392,7 +383,7 @@ export default function AdminDashboard() {
                         {user.referrer_id || 'None'}
                       </td>
                       
-                      {/* Plan A Data Cells */}
+                      {/* Plan Data Cells - Removed Plan B */}
                       <td className="px-2 py-2 text-sm">
                         {user.plan_a ? formatNumber(user.plan_a.POL) : 'N/A'}
                       </td>
@@ -402,16 +393,8 @@ export default function AdminDashboard() {
                       <td className="px-2 py-2 text-sm">
                         {user.plan_a?.dateTime ? new Date(user.plan_a.dateTime).toLocaleDateString() : 'N/A'}
                       </td>
-                      
-                      {/* Plan B Data Cells */}
                       <td className="px-2 py-2 text-sm">
-                        {user.plan_b ? formatNumber(user.plan_b.POL) : 'N/A'}
-                      </td>
-                      <td className="px-2 py-2 text-sm">
-                        {user.plan_b ? formatNumber(user.plan_b.rateTHBPOL) : 'N/A'}
-                      </td>
-                      <td className="px-2 py-2 text-sm">
-                        {user.plan_b?.dateTime ? new Date(user.plan_b.dateTime).toLocaleDateString() : 'N/A'}
+                        {user.plan_a?.status || 'N/A'}
                       </td>
                       
                       <td className="px-4 py-2">
