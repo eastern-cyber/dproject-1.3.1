@@ -18,7 +18,26 @@ interface User {
     POL?: number;
     rateTHBPOL?: number;
     txHash?: string;
-    status?: string; // Add status field if needed
+    status?: string;
+  } | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Add interface for API response data
+interface ApiUser {
+  id: number;
+  user_id: string;
+  referrer_id: string | null;
+  email: string | null;
+  name: string | null;
+  token_id: string | null;
+  plan_a: {
+    dateTime?: string;
+    POL?: number;
+    rateTHBPOL?: number;
+    txHash?: string;
+    status?: string;
   } | null;
   created_at: string;
   updated_at: string;
@@ -61,8 +80,8 @@ export default function AdminDashboard() {
       
       const data = await response.json();
       
-      // Ensure plan_a exists and has proper structure
-      const usersWithPlan = data.map((user: any) => ({
+      // FIXED: Use proper typing instead of 'any'
+      const usersWithPlan = data.map((user: ApiUser) => ({
         ...user,
         plan_a: user.plan_a || null
       }));
@@ -101,34 +120,35 @@ export default function AdminDashboard() {
     const [statusFilter, setStatusFilter] = useState<string>('all');
 
     // Update filteredUsers to include status filtering
-    const filteredUsers = useMemo(() => {
-      if (!users || users.length === 0) return [];
-      
-      let filtered = users;
-      
-      // Apply search term filter
-      if (searchTerm) {
-        const term = searchTerm.toLowerCase();
-        filtered = filtered.filter(user => {
-          const userIdMatch = user.user_id?.toLowerCase().includes(term) || false;
-          const emailMatch = user.email?.toLowerCase().includes(term) || false;
-          const nameMatch = user.name?.toLowerCase().includes(term) || false;
-          const tokenIdMatch = user.token_id?.toLowerCase().includes(term) || false;
-          const referrerMatch = user.referrer_id?.toLowerCase().includes(term) || false;
-          
-          return userIdMatch || emailMatch || nameMatch || tokenIdMatch || referrerMatch;
-        });
-      }
-      
-      // Apply status filter
-      if (statusFilter !== 'all') {
-        filtered = filtered.filter(user => 
-          user.plan_a?.status === statusFilter
-        );
-      }
+    // Make sure to actually use statusFilter in your filteredUsers logic
+  const filteredUsers = useMemo(() => {
+    if (!users || users.length === 0) return [];
     
-      return filtered;
-    }, [users, searchTerm, statusFilter]);
+    let filtered = users;
+    
+    // Apply search term filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(user => {
+        const userIdMatch = user.user_id?.toLowerCase().includes(term) || false;
+        const emailMatch = user.email?.toLowerCase().includes(term) || false;
+        const nameMatch = user.name?.toLowerCase().includes(term) || false;
+        const tokenIdMatch = user.token_id?.toLowerCase().includes(term) || false;
+        const referrerMatch = user.referrer_id?.toLowerCase().includes(term) || false;
+        
+        return userIdMatch || emailMatch || nameMatch || tokenIdMatch || referrerMatch;
+      });
+    }
+    
+    // Apply status filter - ACTUALLY USE statusFilter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(user => 
+        user.plan_a?.status === statusFilter
+      );
+    }
+  
+    return filtered;
+  }, [users, searchTerm, statusFilter]); // Add statusFilter to dependencies
 
   // Sort users
   const sortedUsers = useMemo(() => {
