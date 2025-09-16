@@ -189,7 +189,7 @@ export default function AdminDashboard() {
     return isNaN(num) ? '0.00' : num.toFixed(2);
   };
 
-  // Helper function to safely calculate total POL from plan_a and plan_b
+  // Helper function to safely calculate total POL from plan_a
 const calculateTotalPOL = () => {
   if (!users || users.length === 0) return '0.00';
   
@@ -207,8 +207,7 @@ const calculateTotalPOL = () => {
   return total.toFixed(2);
 };
 
-  // Helper function to safely calculate average rate from plan_a and plan_b
-  // Remove plan_b references
+  // Helper function to safely calculate average rate from plan_a
 const calculateAverageRate = () => {
   if (!users || users.length === 0) return '0.00';
   
@@ -595,30 +594,6 @@ const calculateAverageRate = () => {
                     <div>
                       <dt className="text-sm text-gray-500 dark:text-gray-400">Transaction Hash</dt>
                       <dd className="text-sm font-mono">{selectedUser.plan_a.txHash || 'N/A'}</dd>
-                    </div>
-                  </dl>
-                </div>
-              )}
-
-              {selectedUser.plan_b && (
-                <div className="mt-6">
-                  <h3 className="font-semibold text-gray-700 dark:text-gray-300 underline">Plan B Details</h3>
-                  <dl className="mt-2 space-y-2">
-                    <div>
-                      <dt className="text-sm text-gray-500 dark:text-gray-400">Date Time</dt>
-                      <dd className="text-sm">{selectedUser.plan_b.dateTime || 'N/A'}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm text-gray-500 dark:text-gray-400">POL</dt>
-                      <dd className="text-sm">{formatNumber(selectedUser.plan_b.POL)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm text-gray-500 dark:text-gray-400">Rate THB/POL</dt>
-                      <dd className="text-sm">{formatNumber(selectedUser.plan_b.rateTHBPOL)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm text-gray-500 dark:text-gray-400">Transaction Hash</dt>
-                      <dd className="text-sm font-mono">{selectedUser.plan_b.txHash || 'N/A'}</dd>
                     </div>
                   </dl>
                 </div>
