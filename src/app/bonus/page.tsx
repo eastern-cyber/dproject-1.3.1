@@ -1,7 +1,6 @@
 // src/app/bonus/page.tsx
 
 'use client';
-
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Footer from '@/components/Footer';
@@ -47,8 +46,9 @@ export default function BonusPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState<SortField>('ar');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  // Changed default sort field to token_id
+  const [sortField, setSortField] = useState<SortField>('token_id');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [selectedUser, setSelectedUser] = useState<BonusUser | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -111,7 +111,7 @@ export default function BonusPage() {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
       setSortField(field);
-      setSortDirection('desc');
+      setSortDirection('asc'); // Default to ascending when changing sort field
     }
   };
 
@@ -130,29 +130,30 @@ export default function BonusPage() {
       if (aValue === null || aValue === undefined) aValue = '';
       if (bValue === null || bValue === undefined) bValue = '';
       
+      // Handle numeric fields
       if (['pr_a', 'pr_b', 'cr', 'rt', 'ar'].includes(sortField)) {
         aValue = typeof aValue === 'string' ? parseFloat(aValue) : aValue;
         bValue = typeof bValue === 'string' ? parseFloat(bValue) : bValue;
         
         if (isNaN(aValue as number)) aValue = 0;
         if (isNaN(bValue as number)) bValue = 0;
-      }
-      
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        const aStr = aValue.toLowerCase();
-        const bStr = bValue.toLowerCase();
         
+        // Numeric comparison
         if (sortDirection === 'asc') {
-          return aStr.localeCompare(bStr);
+          return (aValue as number) - (bValue as number);
         } else {
-          return bStr.localeCompare(aStr);
+          return (bValue as number) - (aValue as number);
         }
       }
       
+      // Handle string comparison for text fields (token_id, user_id, name, email)
+      const aStr = String(aValue).toLowerCase();
+      const bStr = String(bValue).toLowerCase();
+      
       if (sortDirection === 'asc') {
-        return (aValue as number) > (bValue as number) ? 1 : -1;
+        return aStr.localeCompare(bStr);
       } else {
-        return (aValue as number) < (bValue as number) ? 1 : -1;
+        return bStr.localeCompare(aStr);
       }
     });
   }, [bonusUsers, sortField, sortDirection]);
@@ -344,9 +345,24 @@ export default function BonusPage() {
                     >
                       Token ID {sortField === 'token_id' && (sortDirection === 'asc' ? '↑' : '↓')}
                     </th>
-                    <th className="px-4 py-2 text-left">Wallet Address</th>
-                    <th className="px-4 py-2 text-left">Name</th>
-                    <th className="px-4 py-2 text-left">Email</th>
+                    <th 
+                      className="px-4 py-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                      onClick={() => handleSort('user_id')}
+                    >
+                      Wallet Address {sortField === 'user_id' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    </th>
+                    <th 
+                      className="px-4 py-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                      onClick={() => handleSort('name')}
+                    >
+                      Name {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    </th>
+                    <th 
+                      className="px-4 py-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                      onClick={() => handleSort('email')}
+                    >
+                      Email {sortField === 'email' && (sortDirection === 'asc' ? '↑' : '↓')}
+                    </th>
                     <th 
                       className="w-12 px-4 py-2 text-left cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
                       onClick={() => handleSort('pr_a')}

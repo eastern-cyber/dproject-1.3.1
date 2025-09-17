@@ -23,13 +23,34 @@ interface UserData {
     txHash?: string;
     joined?: boolean;
   } | null;
-  plan_b: {
-    dateTime?: string;
-    POL?: number;
-    rateTHBPOL?: number;
-    txHash?: string;
-    joined?: boolean;
-  } | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface PlanBData {
+  id: number;
+  user_id: string;
+  pol: number;
+  date_time: string;
+  link_ipfs: string;
+  rate_thb_pol: number;
+  cumulative_pol: number;
+  append_pol: number;
+  append_tx_hash: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface BonusData {
+  id: number;
+  user_id: string;
+  pr_a: number;
+  pr_b: number;
+  cr: number;
+  rt: number;
+  ar: number;
+  bonus_date: string;
+  calculated_at: string;
   created_at: string;
   updated_at: string;
 }
@@ -37,8 +58,12 @@ interface UserData {
 export default function PremiumArea() {
   const account = useActiveAccount();
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [planBData, setPlanBData] = useState<PlanBData | null>(null);
+  const [bonusData, setBonusData] = useState<BonusData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -52,34 +77,38 @@ export default function PremiumArea() {
         setError(null);
         console.log('Fetching user data for wallet:', account.address);
         
-        // Use the same API endpoint as the admin dashboard
-        const response = await fetch(`/api/users?user_id=${account.address}`);
+        // Fetch user data
+        const userResponse = await fetch(`/api/users?user_id=${account.address}`);
         
-        console.log('API response status:', response.status);
+        console.log('API response status:', userResponse.status);
         
-        if (!response.ok) {
-          // Try to parse the error response as JSON first
-          try {
-            const errorData = await response.json();
-            console.error('API error response (JSON):', errorData);
-            
-            if (errorData.error === 'User not found') {
-              setError('ไม่พบข้อมูลผู้ใช้ในระบบ - กรุณาตรวจสอบว่าท่านได้ลงทะเบียนแล้วหรือยัง');
-              return;
-            }
-            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-          } catch (jsonError) {
-            // If JSON parsing fails, fall back to text
-            const errorText = await response.text();
-            console.error('API error response (text):', errorText);
-            throw new Error(`Failed to fetch user data: ${response.status} ${response.statusText}`);
+        if (!userResponse.ok) {
+          const errorData = await userResponse.json();
+          console.error('API error response:', errorData);
+          
+          if (errorData.error === 'User not found') {
+            setError('ไม่พบข้อมูลผู้ใช้ในระบบ - กรุณาตรวจสอบว่าท่านได้ลงทะเบียนแล้วหรือยัง');
+            return;
           }
+          throw new Error(errorData.error || `HTTP error! status: ${userResponse.status}`);
         }
 
-        const data = await response.json();
-        console.log('API response data:', data);
-        
-        setUserData(data);
+        const userData = await userResponse.json();
+        console.log('User data:', userData);
+        setUserData(userData);
+
+        // Fetch Plan B data
+        try {
+          const planBResponse = await fetch(`/api/plan-b?user_id=${account.address}`);
+          if (planBResponse.ok) {
+            const planBData = await planBResponse.json();
+            console.log('Plan B data:', planBData);
+            setPlanBData(planBData);
+          }
+        } catch (planBError) {
+          console.log('No Plan B data found or error fetching:', planBError);
+        }
+
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
         setError(errorMessage);
@@ -92,11 +121,56 @@ export default function PremiumArea() {
     fetchUserData();
   }, [account?.address]);
 
+  const fetchBonusData = async () => {
+    if (!account?.address) return;
+
+    try {
+      setModalLoading(true);
+      const bonusResponse = await fetch(`/api/bonus?user_id=${account.address}`);
+      
+      if (bonusResponse.ok) {
+        const bonusData = await bonusResponse.json();
+        console.log('Bonus data:', bonusData);
+        setBonusData(bonusData);
+      } else {
+        console.log('No bonus data found');
+        setBonusData([]);
+      }
+    } catch (bonusError) {
+      console.error('Error fetching bonus data:', bonusError);
+      setBonusData([]);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const handleJoinPlanB = () => {
+    setShowModal(true);
+    fetchBonusData();
+  };
+
+  const confirmJoinPlanB = async () => {
+    // Add your logic here to handle Plan B confirmation
+    // This would typically involve making a POST request to an API endpoint
+    // that creates a new Plan B record for the user
+    alert('ยืนยันการเข้าร่วม Plan B - ฟังก์ชันนี้จะถูกพัฒนาต่อไป');
+    setShowModal(false);
+  };
+
   // Check if user is in Plan A
   const isPlanA = userData?.plan_a !== null && userData?.plan_a !== undefined;
 
-  // Check if user is in Plan B
-  const isPlanB = userData?.plan_b !== null && userData?.plan_b !== undefined;
+  // Check if user is in Plan B (using the separate plan_b table)
+  const isPlanB = planBData !== null;
+
+
+
+  // Calculate total bonus - sum of ALL bonus components
+  const totalBonus = bonusData.reduce((total, bonus) => {
+    return total + bonus.pr_a + bonus.pr_b + bonus.cr + bonus.rt + bonus.ar;
+  }, 0);
+
+  const netBonus = totalBonus * 0.05; // 5% of total bonus
 
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -166,7 +240,7 @@ export default function PremiumArea() {
         {userData && (
           <div className="flex flex-col items-center justify-center p-5 border border-gray-800 rounded-lg text-[19px] text-center mt-10">
             <span className="m-2 text-[#eb1c24] text-[22px] animate-blink font-bold">
-              {isPlanB ? "Plan B Member" : "Not a Plan B Member"}
+              {isPlanB ? "ท่านเป็นสมาชิก Plan B เรียบร้อยแล้ว" : "ท่านยังไม่ได้เป็นสมาชิก Plan B"}
             </span>
             <div className="flex flex-col m-2 text-gray-200 text-[16px] text-left ">
             <p className="text-underline text-[20px] text-bold">รายละเอียดสมาชิก</p>
@@ -176,9 +250,8 @@ export default function PremiumArea() {
             เข้า Plan A: {isPlanA ? "ใช่" : "ไม่ใช่"}<br />
             Token ID: {userData.token_id || 'ไม่มีข้อมูล'}<br />
             PR by: {userData.referrer_id || "ไม่มี"}<br />
-            {/* วันที่สมัคร: {formatDate(userData.created_at)}<br />
-            อัปเดตล่าสุด: {formatDate(userData.updated_at)}<br /> */}
             </div>
+            
             {/* Display Plan A details if available */}
             {isPlanA && userData.plan_a && (
               <div className="w-full mt-4 p-3 border border-blue-500 rounded-lg">
@@ -193,15 +266,29 @@ export default function PremiumArea() {
             )}
             
             {/* Display Plan B details if available */}
-            {isPlanB && userData.plan_b && (
+            {isPlanB && planBData && (
               <div className="w-full mt-4 p-3 border border-green-500 rounded-lg">
                 <h3 className="p-4 text-[24px] text-green-400">ยอดสะสม Plan B</h3>
-                <p>POL: {formatNumber(userData.plan_b.POL)}</p>
-                <p>Rate: {formatNumber(userData.plan_b.rateTHBPOL)} THB/POL</p>
-                <p>วันที่: {userData.plan_b.dateTime ? formatDate(userData.plan_b.dateTime) : 'N/A'}</p>
-                {userData.plan_b.txHash && (
-                  <p className="text-xs font-mono">Tx: {userData.plan_b.txHash.substring(0, 20)}...</p>
+                <p>POL: {formatNumber(planBData.pol)}</p>
+                <p>Rate: {formatNumber(planBData.rate_thb_pol)} THB/POL</p>
+                <p>วันที่: {formatDate(planBData.date_time)}</p>
+                <p>Cumulative POL: {formatNumber(planBData.cumulative_pol)}</p>
+                <p>Append POL: {formatNumber(planBData.append_pol)}</p>
+                {planBData.append_tx_hash && (
+                  <p className="text-xs font-mono">Tx: {planBData.append_tx_hash.substring(0, 20)}...</p>
                 )}
+              </div>
+            )}
+
+            {/* Show Join Plan B button if user is not in Plan B */}
+            {!isPlanB && userData && (
+              <div className="w-full mt-6">
+                <button
+                  onClick={handleJoinPlanB}
+                  className="w-full py-3 px-6 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors"
+                >
+                  ยืนยันเข้าร่วม Plan B
+                </button>
               </div>
             )}
             
@@ -212,7 +299,7 @@ export default function PremiumArea() {
 
         {!account?.address && (
           <div className="flex flex-col items-center justify-center p-5 border border-gray-800 rounded-lg text-[19px] text-center font-bold mt-10">
-            <p>กรุณาเชื่อมต่อกระเป๋าเงินเพื่อดูข้อมูล</p>
+            <p>กรุณาเชื่อมต่อกระเป๋า</p>
           </div>
         )}
         
@@ -221,16 +308,62 @@ export default function PremiumArea() {
         </div>
 
       </div>
+
+      {/* Plan B Confirmation Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4 text-center">ยืนยันการเข้าร่วม Plan B</h2>
+            
+            {modalLoading ? (
+              <p className="text-center">กำลังคำนวณโบนัส...</p>
+            ) : (
+              <>
+                // In the modal section of the Plan B page, replace the calculation part with this:
+
+                <div className="mb-4">
+                  <p className="font-semibold">ยอดสะสมสุทธิของท่าน:</p>
+                  <p className="text-2xl text-green-600 font-bold">
+                    {formatNumber(netBonus)} POL
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    (5% ของโบนัสทั้งหมด: {formatNumber(totalBonus)} POL)
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  <div className="text-sm">PR A: {formatNumber(bonusData.reduce((sum, b) => sum + b.pr_a, 0))}</div>
+                  <div className="text-sm">PR B: {formatNumber(bonusData.reduce((sum, b) => sum + b.pr_b, 0))}</div>
+                  <div className="text-sm">CR: {formatNumber(bonusData.reduce((sum, b) => sum + b.cr, 0))}</div>
+                  <div className="text-sm">RT: {formatNumber(bonusData.reduce((sum, b) => sum + b.rt, 0))}</div>
+                  <div className="text-sm">AR: {formatNumber(bonusData.reduce((sum, b) => sum + b.ar, 0))}</div>
+                  <div className="text-sm col-span-2 border-t pt-2 mt-2">
+                    <strong>Total Bonus: {formatNumber(totalBonus)} POL</strong>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 justify-center">
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    onClick={confirmJoinPlanB}
+                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                  >
+                    ยืนยัน
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className='px-1 w-full'>
         <Footer />
-      </div>
-      <div className="flex flex-col items-center">
-        <Link 
-          className="flex flex-col mt-4 border border-zinc-500 px-4 py-3 rounded-lg hover:bg-zinc-800 transition-colors hover:border-zinc-800"
-          href="/"
-        >
-          กลับหน้าหลัก
-        </Link>
       </div>
     </main>
   )
