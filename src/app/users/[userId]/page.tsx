@@ -32,7 +32,7 @@ export default function UserDetails({ params }: { params: Promise<{ userId: stri
     const [userData, setUserData] = useState<UserData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const router = useRouter();
+    const _router = useRouter();
 
     useEffect(() => {
         const resolveParams = async () => {

@@ -47,9 +47,10 @@ export async function GET(request: NextRequest) {
     
     // Build WHERE clause for search
     let whereClause = '';
-    let queryParams: any[] = [limit, offset];
-    let paramCount = 3; // Start from $3 since $1 and $2 are for limit and offset
-    
+    // Replace line 50 and fix the type issues
+    const queryParams: (string | number)[] = [limit, offset];
+    let paramCount = 3;
+
     if (search) {
       whereClause = `
         WHERE (

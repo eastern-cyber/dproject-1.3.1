@@ -133,7 +133,7 @@ export default function PremiumArea() {
         console.log('Raw bonus API response:', bonusData);
         
         // Convert all numeric fields to numbers to ensure proper calculation
-        const processedBonusData = bonusData.map((bonus: any) => ({
+        const processedBonusData = bonusData.map((bonus: BonusData) => ({
           ...bonus,
           pr_a: Number(bonus.pr_a),
           pr_b: Number(bonus.pr_b),

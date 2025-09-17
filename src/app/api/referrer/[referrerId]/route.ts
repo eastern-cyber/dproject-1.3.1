@@ -3,10 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sql from '@/lib/db';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ referrerId: string }> }
-) {
+export async function GET(request: NextRequest, { params: _params }: { params: { referrerId: string } }) {
   try {
     // Extract referrerId from URL path
     const url = new URL(request.url);

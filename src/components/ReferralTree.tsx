@@ -251,7 +251,7 @@ const ReferralTree: React.FC<ReferralTreeProps> = ({ referrerId }) => {
 
     let totalReceived = 0;
 
-    genSummary.forEach(([_, count]) => {
+    genSummary.forEach(([, count]) => {
       const unilevel = count * 0.8;
       const received = unilevel - (unilevel * 0.25);
       totalReceived += received;

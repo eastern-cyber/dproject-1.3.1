@@ -188,7 +188,7 @@ const WalletBalances: React.FC<walletAddresssProps> = ({ walletAddress }) => {
             
             <div className="mt-8 flex flex-col justify-items-left">
                 <div className="flex mt-3 gap-2 md:gap-2">
-                    <img 
+                    <Image 
                         width={24} 
                         height={24} 
                         className="h-6 w-6 rounded-full mr-1" 
@@ -202,7 +202,7 @@ const WalletBalances: React.FC<walletAddresssProps> = ({ walletAddress }) => {
                         }).format(Number(toEther(polBalance || 0n))) : "0"}
                 </div>
                 <div className="flex mt-3 gap-2 md:gap-2">
-                    <img 
+                    <Image 
                         width={24}
                         height={24}
                         className="h-6 w-6 rounded-full mr-1"
@@ -217,11 +217,11 @@ const WalletBalances: React.FC<walletAddresssProps> = ({ walletAddress }) => {
                 </div>
 
                 <div className="flex mt-3 gap-2 md:gap-2">
-                    <img width={24} height={24} className="h-6 w-6 rounded-full mr-1" src="https://polygonscan.com/token/images/centre-usdc_32.png" alt="USDC Token" />
+                    <Image width={24} height={24} className="h-6 w-6 rounded-full mr-1" src="https://polygonscan.com/token/images/centre-usdc_32.png" alt="USDC Token" />
                     เหรียญ USDC: {walletAddress ? (Number(usdcBalance) / 1_000_000).toFixed(2) : "0"}
                 </div>                
                 <div className="flex mt-3 gap-2 md:gap-2">
-                    <img width={24} height={24} className="h-6 w-6 rounded-full mr-1" src="https://polygonscan.com/token/images/tether_32.png" alt="USDT Token" />
+                    <Image width={24} height={24} className="h-6 w-6 rounded-full mr-1" src="https://polygonscan.com/token/images/tether_32.png" alt="USDT Token" />
                     เหรียญ USDT: {walletAddress ? (Number(usdtBalance) / 1_000_000).toFixed(2) : "0"}
                 </div>
                 

@@ -117,7 +117,7 @@ export default function AdminDashboard() {
     };
     
     // Add status filter state
-    const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [statusFilter, _setStatusFilter] = useState('all');
 
     // Update filteredUsers to include status filtering
     // Make sure to actually use statusFilter in your filteredUsers logic
