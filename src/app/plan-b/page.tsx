@@ -130,8 +130,33 @@ export default function PremiumArea() {
       
       if (bonusResponse.ok) {
         const bonusData = await bonusResponse.json();
-        console.log('Bonus data:', bonusData);
-        setBonusData(bonusData);
+        console.log('Raw bonus API response:', bonusData);
+        
+        // Convert all numeric fields to numbers to ensure proper calculation
+        const processedBonusData = bonusData.map((bonus: any) => ({
+          ...bonus,
+          pr_a: Number(bonus.pr_a),
+          pr_b: Number(bonus.pr_b),
+          cr: Number(bonus.cr),
+          rt: Number(bonus.rt),
+          ar: Number(bonus.ar)
+        }));
+        
+        console.log('Processed bonus data:', processedBonusData);
+        
+        // Debug: check individual values
+        processedBonusData.forEach((bonus: BonusData, index: number) => {
+          console.log(`Bonus ${index}:`, {
+            pr_a: bonus.pr_a,
+            pr_b: bonus.pr_b,
+            cr: bonus.cr,
+            rt: bonus.rt,
+            ar: bonus.ar,
+            total: bonus.pr_a + bonus.pr_b + bonus.cr + bonus.rt + bonus.ar
+          });
+        });
+        
+        setBonusData(processedBonusData);
       } else {
         console.log('No bonus data found');
         setBonusData([]);
@@ -167,7 +192,12 @@ export default function PremiumArea() {
 
   // Calculate total bonus - sum of ALL bonus components
   const totalBonus = bonusData.reduce((total, bonus) => {
-    return total + bonus.pr_a + bonus.pr_b + bonus.cr + bonus.rt + bonus.ar;
+    return total + 
+          (Number(bonus.pr_a) || 0) + 
+          (Number(bonus.pr_b) || 0) + 
+          (Number(bonus.cr) || 0) + 
+          (Number(bonus.rt) || 0) + 
+          (Number(bonus.ar) || 0);
   }, 0);
 
   const netBonus = totalBonus * 0.05; // 5% of total bonus
@@ -311,56 +341,54 @@ export default function PremiumArea() {
 
       {/* Plan B Confirmation Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4 text-center">ยืนยันการเข้าร่วม Plan B</h2>
-            
-            {modalLoading ? (
-              <p className="text-center">กำลังคำนวณโบนัส...</p>
-            ) : (
-              <>
-                // In the modal section of the Plan B page, replace the calculation part with this:
-
-                <div className="mb-4">
-                  <p className="font-semibold">ยอดสะสมสุทธิของท่าน:</p>
-                  <p className="text-2xl text-green-600 font-bold">
-                    {formatNumber(netBonus)} POL
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    (5% ของโบนัสทั้งหมด: {formatNumber(totalBonus)} POL)
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 mb-4">
-                  <div className="text-sm">PR A: {formatNumber(bonusData.reduce((sum, b) => sum + b.pr_a, 0))}</div>
-                  <div className="text-sm">PR B: {formatNumber(bonusData.reduce((sum, b) => sum + b.pr_b, 0))}</div>
-                  <div className="text-sm">CR: {formatNumber(bonusData.reduce((sum, b) => sum + b.cr, 0))}</div>
-                  <div className="text-sm">RT: {formatNumber(bonusData.reduce((sum, b) => sum + b.rt, 0))}</div>
-                  <div className="text-sm">AR: {formatNumber(bonusData.reduce((sum, b) => sum + b.ar, 0))}</div>
-                  <div className="text-sm col-span-2 border-t pt-2 mt-2">
-                    <strong>Total Bonus: {formatNumber(totalBonus)} POL</strong>
-                  </div>
-                </div>
-
-                <div className="flex gap-3 justify-center">
-                  <button
-                    onClick={() => setShowModal(false)}
-                    className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-                  >
-                    ยกเลิก
-                  </button>
-                  <button
-                    onClick={confirmJoinPlanB}
-                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                  >
-                    ยืนยัน
-                  </button>
-                </div>
-              </>
-            )}
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
+      <h2 className="text-xl font-bold mb-4 text-center">ยืนยันการเข้าร่วม Plan B</h2>
+      
+      {modalLoading ? (
+        <p className="text-center">กำลังคำนวณโบนัส...</p>
+      ) : (
+        <>
+          <div className="mb-4">
+            <p className="font-semibold">ยอดสะสมสุทธิของท่าน:</p>
+            <p className="text-2xl text-green-600 font-bold">
+              {formatNumber(netBonus)} POL
+            </p>
+            <p className="text-sm text-gray-500">
+              (5% ของโบนัสทั้งหมด: {formatNumber(totalBonus)} POL)
+            </p>
           </div>
-        </div>
+
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            <div className="text-sm">PR A: {formatNumber(bonusData.reduce((sum, b) => sum + (Number(b.pr_a) || 0), 0))}</div>
+            <div className="text-sm">PR B: {formatNumber(bonusData.reduce((sum, b) => sum + (Number(b.pr_b) || 0), 0))}</div>
+            <div className="text-sm">CR: {formatNumber(bonusData.reduce((sum, b) => sum + (Number(b.cr) || 0), 0))}</div>
+            <div className="text-sm">RT: {formatNumber(bonusData.reduce((sum, b) => sum + (Number(b.rt) || 0), 0))}</div>
+            <div className="text-sm">AR: {formatNumber(bonusData.reduce((sum, b) => sum + (Number(b.ar) || 0), 0))}</div>
+            <div className="text-sm col-span-2 border-t pt-2 mt-2">
+              <strong>Total Bonus: {formatNumber(totalBonus)} POL</strong>
+            </div>
+          </div>
+
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => setShowModal(false)}
+              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+            >
+              ยกเลิก
+            </button>
+            <button
+              onClick={confirmJoinPlanB}
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            >
+              ยืนยัน
+            </button>
+          </div>
+        </>
       )}
+    </div>
+  </div>
+)}
 
       <div className='px-1 w-full'>
         <Footer />
