@@ -1,20 +1,23 @@
 // src/lib/db.ts
-import postgres from 'postgres';
 
-// Log the environment status for debugging
-console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('DATABASE_URL available:', !!process.env.DATABASE_URL);
+import { Pool } from 'pg';
 
-if (!process.env.DATABASE_URL) {
-  console.error('❌ DATABASE_URL environment variable is not set');
-  console.error('Database functionality will be disabled');
+// Create a new pool instance
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
+
+// Helper function to execute queries
+export async function sql(strings: TemplateStringsArray, ...values: any[]) {
+  const client = await pool.connect();
+  try {
+    const query = strings.reduce((acc, str, i) => acc + str + (values[i] || ''), '');
+    const result = await client.query(query, values.filter(v => v !== undefined));
+    return result.rows;
+  } finally {
+    client.release();
+  }
 }
-
-const sql = process.env.DATABASE_URL 
-  ? postgres(process.env.DATABASE_URL, {
-      ssl: process.env.NODE_ENV === 'production' ? 'require' : 'allow',
-      connect_timeout: 30,
-    })
-  : null;
 
 export default sql;

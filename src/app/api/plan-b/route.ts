@@ -11,6 +11,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
   }
 
+  // Check if sql is available
+  if (!sql) {
+    return NextResponse.json(
+      { error: 'Database not configured' },
+      { status: 500 }
+    );
+  }
+
   try {
     const result = await sql`
       SELECT * FROM plan_b WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 1
