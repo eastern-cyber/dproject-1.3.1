@@ -14,15 +14,12 @@ interface BonusUser {
   cr: number | string;
   rt: number | string;
   ar: number | string;
-  pr_a_paid: any;
-  pr_b_paid: any;
-  cr_paid: any;
-  rt_paid: any;
-  ar_paid: any;
   token_id: string | null;
   name: string | null;
   email: string | null;
   referrer_id: string | null;
+  bonus_date: string;
+  calculated_at: string;
   created_at: string;
   updated_at: string;
 }
@@ -35,7 +32,6 @@ interface Pagination {
   hasPrev: boolean;
 }
 
-// Add 'token_id' to the SortField type
 type SortField = 'token_id' | 'user_id' | 'name' | 'email' | 'ar' | 'cr' | 'rt' | 'pr_a' | 'pr_b';
 type SortDirection = 'asc' | 'desc';
 
@@ -77,7 +73,6 @@ export default function BonusPage() {
       const response = await fetch(`/api/bonus?${params}`);
       
       if (!response.ok) {
-        // Try to get detailed error message from response
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
           errorData.error || errorData.details || `HTTP error! status: ${response.status}`
@@ -86,10 +81,8 @@ export default function BonusPage() {
       
       const data = await response.json();
       
-      // Safely set bonusUsers - ensure it's always an array
       setBonusUsers(Array.isArray(data.data) ? data.data : []);
       
-      // Safely set pagination with default values
       setPagination({
         currentPage: data.pagination?.currentPage || 1,
         totalPages: data.pagination?.totalPages || 1,
@@ -101,7 +94,7 @@ export default function BonusPage() {
     } catch (error) {
       console.error('Error fetching bonus data:', error);
       setError(error instanceof Error ? error.message : 'Failed to fetch bonus data');
-      setBonusUsers([]); // Ensure it's always an array
+      setBonusUsers([]);
     } finally {
       setLoading(false);
     }
@@ -127,30 +120,24 @@ export default function BonusPage() {
     fetchBonusData(page, searchTerm);
   };
 
-  // Sort locally for better UX (since we have the full page data)
   const sortedUsers = useMemo(() => {
-    // Safely handle bonusUsers - ensure it's always an array
     const usersArray = Array.isArray(bonusUsers) ? bonusUsers : [];
     
     return [...usersArray].sort((a, b) => {
       let aValue = a[sortField];
       let bValue = b[sortField];
       
-      // Handle null/undefined values
       if (aValue === null || aValue === undefined) aValue = '';
       if (bValue === null || bValue === undefined) bValue = '';
       
-      // Convert numeric strings to numbers for proper numeric comparison
       if (['pr_a', 'pr_b', 'cr', 'rt', 'ar'].includes(sortField)) {
         aValue = typeof aValue === 'string' ? parseFloat(aValue) : aValue;
         bValue = typeof bValue === 'string' ? parseFloat(bValue) : bValue;
         
-        // Handle NaN cases
         if (isNaN(aValue as number)) aValue = 0;
         if (isNaN(bValue as number)) bValue = 0;
       }
       
-      // Handle string comparison for text fields
       if (typeof aValue === 'string' && typeof bValue === 'string') {
         const aStr = aValue.toLowerCase();
         const bStr = bValue.toLowerCase();
@@ -162,7 +149,6 @@ export default function BonusPage() {
         }
       }
       
-      // Handle numeric comparison
       if (sortDirection === 'asc') {
         return (aValue as number) > (bValue as number) ? 1 : -1;
       } else {
@@ -175,15 +161,12 @@ export default function BonusPage() {
     if (value === null || value === undefined) return '0.0000';
     
     try {
-      // Convert to number if it's a string
       const numValue = typeof value === 'string' ? parseFloat(value) : value;
       
-      // Handle invalid numbers
       if (isNaN(numValue) || !isFinite(numValue)) return '0.0000';
       
       return numValue.toFixed(4);
     } catch (error) {
-      console.error('Error formatting number:', error, value);
       return '0.0000';
     }
   };
@@ -192,10 +175,8 @@ export default function BonusPage() {
     if (value === null || value === undefined) return '0.00';
     
     try {
-      // Convert to number if it's a string
       const numValue = typeof value === 'string' ? parseFloat(value) : value;
       
-      // Handle invalid numbers
       if (isNaN(numValue) || !isFinite(numValue)) return '0.00';
       
       return numValue.toLocaleString('en-US', {
@@ -203,12 +184,10 @@ export default function BonusPage() {
         maximumFractionDigits: 2
       });
     } catch (error) {
-      console.error('Error formatting currency:', error, value);
       return '0.00';
     }
   };
 
-  // Calculate statistics safely
   const totalPR_A = useMemo(() => {
     const usersArray = Array.isArray(bonusUsers) ? bonusUsers : [];
     return usersArray.reduce((sum, user) => {
@@ -270,7 +249,7 @@ export default function BonusPage() {
         </div>
       )}
 
-      {/* Statistics - Updated to match requirements */}
+      {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-6 gap-6 mb-8">
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
           <h2 className="text-xl font-semibold mb-2">Total <br /> Bonus Receivers</h2>
@@ -546,6 +525,14 @@ export default function BonusPage() {
                       <dd className="text-sm font-semibold text-green-600 dark:text-green-400">
                         {formatNumber(selectedUser.ar)}
                       </dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm text-gray-500 dark:text-gray-400">Bonus Date</dt>
+                      <dd className="text-sm">{selectedUser.bonus_date}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-sm text-gray-500 dark:text-gray-400">Calculated At</dt>
+                      <dd className="text-sm">{new Date(selectedUser.calculated_at).toLocaleString()}</dd>
                     </div>
                   </dl>
                 </div>
