@@ -18,24 +18,20 @@ export async function GET() {
     `;
     const total = totalUsersResult[0]?.count || 0;
 
-    // Get total POL from plan_a and plan_b
+    // Get total POL from plan_a only (since plan_b doesn't exist)
     const polResult = await sql`
       SELECT 
-        COALESCE(SUM((plan_a->>'POL')::numeric), 0) + 
-        COALESCE(SUM((plan_b->>'POL')::numeric), 0) as total_pol
+        COALESCE(SUM((plan_a->>'POL')::numeric), 0) as total_pol
       FROM users
     `;
     const totalPOL = polResult[0]?.total_pol || 0;
 
-    // Get average rate from plan_a and plan_b
+    // Get average rate from plan_a only
     const rateResult = await sql`
       SELECT 
-        AVG(rate) as avg_rate
-      FROM (
-        SELECT (plan_a->>'rateTHBPOL')::numeric as rate FROM users WHERE plan_a->>'rateTHBPOL' IS NOT NULL
-        UNION ALL
-        SELECT (plan_b->>'rateTHBPOL')::numeric as rate FROM users WHERE plan_b->>'rateTHBPOL' IS NOT NULL
-      ) rates
+        AVG((plan_a->>'rateTHBPOL')::numeric) as avg_rate
+      FROM users
+      WHERE plan_a->>'rateTHBPOL' IS NOT NULL
     `;
     const avgRate = rateResult[0]?.avg_rate || 0;
 
