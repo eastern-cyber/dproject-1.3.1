@@ -212,6 +212,26 @@ export default function PremiumArea() {
     fetchBonusData();
   };
 
+// Add this helper function for retrying transactions before the confirmJoinPlanB function
+const executeWithRetry = async (transactionFn: () => Promise<any>, retries = 3, delay = 1000) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const result = await transactionFn();
+      if (result.success) return result;
+      
+      // Wait before retrying
+      if (i < retries - 1) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    } catch (error) {
+      console.error(`Attempt ${i + 1} failed:`, error);
+      if (i === retries - 1) throw error;
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  throw new Error("All retry attempts failed");
+};
+
 // Update the confirmJoinPlanB function with better error handling
 const confirmJoinPlanB = async () => {
   if (!account || !adjustedExchangeRate || !userData) return;
