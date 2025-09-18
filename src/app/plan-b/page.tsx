@@ -88,6 +88,21 @@ export default function PremiumArea() {
   const [prTxHash, setPrTxHash] = useState<string>("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   
+  // Add this state variable
+  const [maticBalance, setMaticBalance] = useState(0);
+
+  // Add this useEffect to check MATIC balance
+  useEffect(() => {
+    const checkBalance = async () => {
+      if (account) {
+        const balance = await checkMaticBalance();
+        setMaticBalance(balance);
+      }
+    };
+    
+    checkBalance();
+  }, [account]);
+
   useEffect(() => {
     const fetchUserData = async () => {
       if (!account?.address) {
@@ -197,98 +212,146 @@ export default function PremiumArea() {
     fetchBonusData();
   };
 
-  const confirmJoinPlanB = async () => {
-      if (!account || !adjustedExchangeRate || !userData) return;
-      
-      setIsProcessing(true);
-      setTransactionError(null);
+// Update the confirmJoinPlanB function with better error handling
+const confirmJoinPlanB = async () => {
+  if (!account || !adjustedExchangeRate || !userData) return;
+  
+  setIsProcessing(true);
+  setTransactionError(null);
 
+  try {
+    const requiredPolAmount = calculateRequiredPolAmount();
+    if (requiredPolAmount === null) throw new Error("Unable to calculate required POL amount");
+
+    const requiredAmountWei = toWei(requiredPolAmount.toString());
+    const minimumAmountWei = toWei(MINIMUM_PAYMENT.toString());
+
+    // Execute first transaction to recipient
+    console.log('Executing first transaction...');
+    const firstTransaction = await executeTransaction(RECIPIENT_ADDRESS, requiredAmountWei);
+    
+    if (!firstTransaction.success) {
+      throw new Error(`First transaction failed: ${firstTransaction.error}`);
+    }
+    
+    setAppendTxHash(firstTransaction.transactionHash!);
+    console.log('First transaction successful:', firstTransaction.transactionHash);
+
+    // Execute second transaction to referrer (always 0.01 POL)
+    // Replace the second transaction section in confirmJoinPlanB with this:
+    // Execute second transaction to referrer (always 0.01 POL) only if valid address
+    let secondTransactionHash = "";
+    const referrerAddress = getValidReferrerAddress();
+
+    if (referrerAddress) {
+      console.log('Executing second transaction to referrer:', referrerAddress);
       try {
-        const requiredPolAmount = calculateRequiredPolAmount();
-        if (requiredPolAmount === null) throw new Error("Unable to calculate required POL amount");
-
-        const requiredAmountWei = toWei(requiredPolAmount.toString());
-        const minimumAmountWei = toWei(MINIMUM_PAYMENT.toString());
-
-        // Execute first transaction to recipient
-        const firstTransaction = await executeTransaction(RECIPIENT_ADDRESS, requiredAmountWei);
+        const secondTransaction = await executeWithRetry(
+          () => executeTransaction(referrerAddress, minimumAmountWei)
+        );
         
-        if (!firstTransaction.success) {
-          throw new Error(`First transaction failed: ${firstTransaction.error}`);
-        }
-        
-        setAppendTxHash(firstTransaction.transactionHash!);
-
-        // Execute second transaction to referrer (always 0.01 POL)
-        let secondTransactionHash = "";
-        if (userData.referrer_id) {
-          const secondTransaction = await executeTransaction(userData.referrer_id, minimumAmountWei);
-          
-          if (!secondTransaction.success) {
-            throw new Error(`Second transaction failed: ${secondTransaction.error}`);
-          }
-          
+        if (!secondTransaction.success) {
+          console.warn('Second transaction failed, but continuing:', secondTransaction.error);
+          // We don't throw an error here because the main transaction succeeded
+          // Just log the warning and continue
+        } else {
           secondTransactionHash = secondTransaction.transactionHash!;
           setPrTxHash(secondTransactionHash);
+          console.log('Second transaction successful:', secondTransactionHash);
         }
-
-        // Get current time
-        const now = new Date();
-        const formattedDate = now.toISOString();
-
-        // Store report in IPFS
-        const report = {
-          senderAddress: account.address,
-          dateTime: formattedDate,
-          requiredPolAmount: requiredPolAmount,
-          netBonusUsed: netBonus,
-          transactions: [
-            {
-              recipient: RECIPIENT_ADDRESS,
-              amountPOL: requiredPolAmount,
-              transactionHash: firstTransaction.transactionHash
-            },
-            ...(userData.referrer_id ? [{
-              recipient: userData.referrer_id,
-              amountPOL: MINIMUM_PAYMENT,
-              transactionHash: secondTransactionHash
-            }] : [])
-          ],
-          totalAmountTHB: MEMBERSHIP_FEE_THB,
-          exchangeRate: adjustedExchangeRate
-        };
-
-        const ipfsHash = await storeReportInIPFS(report);
-        const ipfsLink = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
-
-        // Add Plan B to PostgreSQL database
-        const newPlanB = {
-          user_id: account.address,
-          pol: requiredPolAmount,
-          date_time: formattedDate,
-          link_ipfs: ipfsLink,
-          rate_thb_pol: adjustedExchangeRate,
-          cumulative_pol: netBonus,
-          append_pol: requiredPolAmount,
-          append_tx_hash: firstTransaction.transactionHash!,
-          pr_pol: userData.referrer_id ? MINIMUM_PAYMENT : 0,
-          pr_pol_tx_hash: userData.referrer_id ? secondTransactionHash : "",
-          pr_pol_date_time: userData.referrer_id ? formattedDate : null
-        };
-
-        await addPlanBToDatabase(newPlanB);
-
-        // Show success modal
-        setShowSuccessModal(true);
-        setShowModal(false);
-        
-      } catch (err) {
-        console.error("Plan B transaction failed:", err);
-        setTransactionError(`การทำรายการล้มเหลว: ${(err as Error).message}`);
-      } finally {
-        setIsProcessing(false);
+      } catch (error) {
+        console.warn('Second transaction failed, but continuing:', error);
+        // Continue even if the second transaction fails
       }
+    } else {
+      console.log('No valid referrer address, skipping second transaction');
+    }
+
+    // Get current time
+    const now = new Date();
+    const formattedDate = now.toISOString();
+
+    // Store report in IPFS (optional - can be skipped if it fails)
+    let ipfsHash = "";
+    let ipfsLink = "";
+    try {
+      const report = {
+        senderAddress: account.address,
+        dateTime: formattedDate,
+        requiredPolAmount: requiredPolAmount,
+        netBonusUsed: netBonus,
+        transactions: [
+          {
+            recipient: RECIPIENT_ADDRESS,
+            amountPOL: requiredPolAmount,
+            transactionHash: firstTransaction.transactionHash
+          },
+          ...(userData.referrer_id ? [{
+            recipient: userData.referrer_id,
+            amountPOL: MINIMUM_PAYMENT,
+            transactionHash: secondTransactionHash
+          }] : [])
+        ],
+        totalAmountTHB: MEMBERSHIP_FEE_THB,
+        exchangeRate: adjustedExchangeRate
+      };
+
+      ipfsHash = await storeReportInIPFS(report);
+      ipfsLink = ipfsHash ? `https://gateway.pinata.cloud/ipfs/${ipfsHash}` : "";
+    } catch (ipfsError) {
+      console.warn('IPFS storage failed, continuing without it:', ipfsError);
+      // We can continue without IPFS storage
+    }
+
+    // // Add Plan B to PostgreSQL database
+    // const newPlanB = {
+    //   user_id: account.address,
+    //   pol: requiredPolAmount,
+    //   date_time: formattedDate,
+    //   link_ipfs: ipfsLink,
+    //   rate_thb_pol: adjustedExchangeRate,
+    //   cumulative_pol: netBonus,
+    //   append_pol: requiredPolAmount,
+    //   append_tx_hash: firstTransaction.transactionHash!,
+    //   pr_pol: userData.referrer_id ? MINIMUM_PAYMENT : 0,
+    //   pr_pol_tx_hash: userData.referrer_id ? secondTransactionHash : "",
+    //   pr_pol_date_time: userData.referrer_id ? formattedDate : null
+    // };
+
+    // Update the newPlanB object creation
+    const newPlanB = {
+      user_id: account.address,
+      pol: requiredPolAmount,
+      date_time: formattedDate,
+      link_ipfs: ipfsLink,
+      rate_thb_pol: adjustedExchangeRate,
+      cumulative_pol: netBonus,
+      append_pol: requiredPolAmount,
+      append_tx_hash: firstTransaction.transactionHash!,
+      pr_pol: referrerAddress ? MINIMUM_PAYMENT : 0,
+      pr_pol_tx_hash: referrerAddress ? secondTransactionHash : "",
+      pr_pol_date_time: referrerAddress ? formattedDate : null
     };
+
+    console.log('Adding Plan B to database...');
+    if (process.env.NODE_ENV === 'development') {
+      await addPlanBToDatabaseDev(newPlanB);
+    } else {
+      await addPlanBToDatabase(newPlanB);
+    }
+    console.log('Database update successful');
+
+    // Show success modal
+    setShowSuccessModal(true);
+    setShowModal(false);
+    
+  } catch (err) {
+    console.error("Plan B transaction failed:", err);
+    setTransactionError(`การทำรายการล้มเหลว: ${(err as Error).message}`);
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   // Check if user is in Plan A
   const isPlanA = userData?.plan_a !== null && userData?.plan_a !== undefined;
@@ -394,13 +457,26 @@ export default function PremiumArea() {
   };
 
   // Add this function to execute POL transactions
+  // Replace the executeTransaction function with this improved version
+  // Update the executeTransaction function to handle invalid addresses better
   const executeTransaction = async (to: string, amountWei: bigint) => {
     try {
+      // Validate recipient address first
+      if (!isValidEthereumAddress(to)) {
+        return { 
+          success: false, 
+          error: `Invalid recipient address: ${to}` 
+        };
+      }
+
+      // Use the correct MATIC token contract address on Polygon
+      const maticContractAddress = "0x0000000000000000000000000000000000001010";
+      
       const transaction = prepareContractCall({
         contract: getContract({
           client,
           chain: defineChain(polygon),
-          address: "0x0000000000000000000000000000000000001010"
+          address: maticContractAddress
         }),
         method: {
           type: "function",
@@ -410,10 +486,9 @@ export default function PremiumArea() {
             { type: "uint256", name: "value" }
           ],
           outputs: [{ type: "bool" }],
-          stateMutability: "payable"
+          stateMutability: "nonpayable"
         },
-        params: [to, amountWei],
-        value: amountWei
+        params: [to, amountWei]
       });
 
       const { transactionHash } = await sendTransaction({
@@ -422,9 +497,52 @@ export default function PremiumArea() {
       });
 
       return { success: true, transactionHash };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Transaction failed:", error);
-      return { success: false, error: (error as Error).message };
+      
+      // Extract more detailed error message
+      let errorMessage = error.message || "Unknown error";
+      
+      // Check for common error cases
+      if (errorMessage.includes("user rejected") || errorMessage.includes("denied transaction")) {
+        errorMessage = "User rejected the transaction";
+      } else if (errorMessage.includes("insufficient funds")) {
+        errorMessage = "Insufficient MATIC for gas fees";
+      } else if (errorMessage.includes("gas")) {
+        errorMessage = "Gas estimation failed";
+      } else if (errorMessage.includes("invalid address") || errorMessage.includes("Invalid address")) {
+        errorMessage = "Invalid recipient address";
+      }
+      
+      return { success: false, error: errorMessage };
+    }
+  };
+
+  // Add this function to check MATIC balance
+  const checkMaticBalance = async () => {
+    if (!account) return 0;
+    
+    try {
+      const balance = await readContract({
+        contract: getContract({
+          client,
+          chain: defineChain(polygon),
+          address: "0x0000000000000000000000000000000000001010" // MATIC token contract
+        }),
+        method: {
+          type: "function",
+          name: "balanceOf",
+          inputs: [{ type: "address", name: "owner" }],
+          outputs: [{ type: "uint256" }],
+          stateMutability: "view"
+        },
+        params: [account.address]
+      });
+      
+      return Number(balance) / 10**18; // Convert from wei to MATIC
+    } catch (error) {
+      console.error("Error checking MATIC balance:", error);
+      return 0;
     }
   };
 
@@ -477,6 +595,7 @@ export default function PremiumArea() {
   };
 
   // Add this function to add Plan B data to database
+  // Replace the addPlanBToDatabase function with this:
   const addPlanBToDatabase = async (planBData: any) => {
     try {
       const response = await fetch('/api/plan-b', {
@@ -488,7 +607,16 @@ export default function PremiumArea() {
       });
 
       if (!response.ok) {
-        throw new Error(`Database error: ${response.status}`);
+        // Try to get error details from response
+        let errorMessage = `Database error: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If we can't parse JSON error response, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
@@ -497,6 +625,35 @@ export default function PremiumArea() {
       console.error('Error adding Plan B to database:', error);
       throw error;
     }
+  };
+
+  // Add this function as an alternative for development
+  const addPlanBToDatabaseDev = async (planBData: any) => {
+    // For development only - simulate a successful database operation
+    console.log('Simulating database insert for development:', planBData);
+    return { ...planBData, id: Math.floor(Math.random() * 1000) };
+  };
+
+  // Add this helper function to validate Ethereum addresses
+  const isValidEthereumAddress = (address: string | null | undefined): boolean => {
+    if (!address) return false;
+    // Basic Ethereum address validation (starts with 0x and has 42 characters)
+    return /^0x[a-fA-F0-9]{40}$/.test(address);
+  };
+
+  // Add this function to get a valid referrer address or null
+  const getValidReferrerAddress = (): string | null => {
+    if (!userData || !userData.referrer_id) return null;
+    
+    const referrerAddress = userData.referrer_id.trim();
+    return isValidEthereumAddress(referrerAddress) ? referrerAddress : null;
+  };
+
+  // Add this function to format addresses for display
+  const formatAddressForDisplay = (address: string | null | undefined): string => {
+    if (!address) return "ไม่มี";
+    if (!isValidEthereumAddress(address)) return "ไม่ถูกต้อง";
+    return `${address.substring(0, 6)}...${address.substring(38)}`;
   };
 
   return (
@@ -555,7 +712,7 @@ export default function PremiumArea() {
             ชื่อ: {userData.name || 'ไม่มีข้อมูล'}<br />
             เข้า Plan A: {isPlanA ? "ใช่" : "ไม่ใช่"}<br />
             Token ID: {userData.token_id || 'ไม่มีข้อมูล'}<br />
-            PR by: {userData.referrer_id || "ไม่มี"}<br />
+            PR by: {formatAddressForDisplay(userData.referrer_id)}<br />
             </div>
             
             {/* Display Plan A details if available */}
@@ -666,17 +823,25 @@ export default function PremiumArea() {
                     </div>
 
                     {account && (
-                      <div className="mb-4">
-                        <p className="text-sm">
-                          POL ในกระเป๋าของคุณ: <span className="text-green-400">{polBalance}</span>
-                        </p>
-                        {parseFloat(polBalance) < (calculateRequiredPolAmount() || 0) && (
-                          <p className="text-red-400 text-sm mt-1">
-                            ⚠️ จำนวน POL ในกระเป๋าของคุณไม่เพียงพอ
-                          </p>
-                        )}
-                      </div>
-                    )}
+                            <div className="mb-4">
+                              <p className="text-sm">
+                                POL ในกระเป๋าของคุณ: <span className="text-green-400">{polBalance}</span>
+                              </p>
+                              <p className="text-sm">
+                                MATIC สำหรับค่าธรรมเนียม: <span className="text-blue-400">{maticBalance.toFixed(4)}</span>
+                              </p>
+                              {parseFloat(polBalance) < (calculateRequiredPolAmount() || 0) && (
+                                <p className="text-red-400 text-sm mt-1">
+                                  ⚠️ จำนวน POL ในกระเป๋าของคุณไม่เพียงพอ
+                                </p>
+                              )}
+                              {maticBalance < 0.1 && (
+                                <p className="text-red-400 text-sm mt-1">
+                                  ⚠️ MATIC ไม่เพียงพอสำหรับค่าธรรมเนียม gas (ต้องการอย่างน้อย 0.1 MATIC)
+                                </p>
+                              )}
+                            </div>
+                          )}
                   </>
                 )}
 
@@ -743,12 +908,18 @@ export default function PremiumArea() {
             <p className="text-sm">ถึง: {RECIPIENT_ADDRESS.substring(0, 8)}...{RECIPIENT_ADDRESS.substring(36)}</p>
           </div>
           
-          {userData?.referrer_id && (
+          {/* // In the success modal, update the referrer transaction section: */}
+          {userData?.referrer_id && isValidEthereumAddress(userData.referrer_id) ? (
             <div className="mt-3">
               <p className="text-sm font-semibold">ธุรกรรมถึงผู้แนะนำ:</p>
-              <p className="text-xs break-all">Tx Hash: {prTxHash}</p>
+              <p className="text-xs break-all">Tx Hash: {prTxHash || "ไม่มีการทำธุรกรรม"}</p>
               <p className="text-sm">จำนวน: {MINIMUM_PAYMENT} POL</p>
-              <p className="text-sm">ถึง: {userData.referrer_id.substring(0, 8)}...{userData.referrer_id.substring(36)}</p>
+              <p className="text-sm">ถึง: {formatAddressForDisplay(userData.referrer_id)}</p>
+            </div>
+          ) : (
+            <div className="mt-3">
+              <p className="text-sm font-semibold">ธุรกรรมถึงผู้แนะนำ:</p>
+              <p className="text-sm">ไม่มีการทำธุรกรรม (ไม่มีผู้แนะนำหรือที่อยู่ไม่ถูกต้อง)</p>
             </div>
           )}
         </div>
