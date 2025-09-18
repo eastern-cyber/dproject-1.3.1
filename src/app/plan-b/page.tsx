@@ -479,64 +479,68 @@ const confirmJoinPlanB = async () => {
   // Add this function to execute POL transactions
   // Replace the executeTransaction function with this improved version
   // Update the executeTransaction function to handle invalid addresses better
-  const executeTransaction = async (to: string, amountWei: bigint) => {
-    try {
-      // Validate recipient address first
-      if (!isValidEthereumAddress(to)) {
-        return { 
-          success: false, 
-          error: `Invalid recipient address: ${to}` 
-        };
-      }
-
-      // Use the correct MATIC token contract address on Polygon
-      const maticContractAddress = "0x0000000000000000000000000000000000001010";
-      
-      const transaction = prepareContractCall({
-        contract: getContract({
-          client,
-          chain: defineChain(polygon),
-          address: maticContractAddress
-        }),
-        method: {
-          type: "function",
-          name: "transfer",
-          inputs: [
-            { type: "address", name: "to" },
-            { type: "uint256", name: "value" }
-          ],
-          outputs: [{ type: "bool" }],
-          stateMutability: "nonpayable"
-        },
-        params: [to, amountWei]
-      });
-
-      const { transactionHash } = await sendTransaction({
-        transaction,
-        account: account!
-      });
-
-      return { success: true, transactionHash };
-    } catch (error: any) {
-      console.error("Transaction failed:", error);
-      
-      // Extract more detailed error message
-      let errorMessage = error.message || "Unknown error";
-      
-      // Check for common error cases
-      if (errorMessage.includes("user rejected") || errorMessage.includes("denied transaction")) {
-        errorMessage = "User rejected the transaction";
-      } else if (errorMessage.includes("insufficient funds")) {
-        errorMessage = "Insufficient MATIC for gas fees";
-      } else if (errorMessage.includes("gas")) {
-        errorMessage = "Gas estimation failed";
-      } else if (errorMessage.includes("invalid address") || errorMessage.includes("Invalid address")) {
-        errorMessage = "Invalid recipient address";
-      }
-      
-      return { success: false, error: errorMessage };
+  // Update the executeTransaction function with the correct POL token contract address
+const executeTransaction = async (to: string, amountWei: bigint) => {
+  try {
+    // Validate recipient address first
+    if (!isValidEthereumAddress(to)) {
+      return { 
+        success: false, 
+        error: `Invalid recipient address: ${to}` 
+      };
     }
-  };
+
+    // Use the correct POL token contract address on Polygon
+    // Note: This is a placeholder - you need to replace with the actual POL token contract address
+    const polTokenContractAddress = "0x0000000000000000000000000000000000001010"; // Example address - REPLACE WITH ACTUAL POL CONTRACT
+    
+    const transaction = prepareContractCall({
+      contract: getContract({
+        client,
+        chain: defineChain(polygon),
+        address: polTokenContractAddress
+      }),
+      method: {
+        type: "function",
+        name: "transfer",
+        inputs: [
+          { type: "address", name: "to" },
+          { type: "uint256", name: "value" }
+        ],
+        outputs: [{ type: "bool" }],
+        stateMutability: "nonpayable"
+      },
+      params: [to, amountWei]
+    });
+
+    const { transactionHash } = await sendTransaction({
+      transaction,
+      account: account!
+    });
+
+    return { success: true, transactionHash };
+  } catch (error: any) {
+    console.error("Transaction failed:", error);
+    
+    // Extract more detailed error message
+    let errorMessage = error.message || "Unknown error";
+    
+    // Check for common error cases
+    if (errorMessage.includes("user rejected") || errorMessage.includes("denied transaction")) {
+      errorMessage = "User rejected the transaction";
+    } else if (errorMessage.includes("insufficient funds")) {
+      errorMessage = "Insufficient MATIC for gas fees";
+    } else if (errorMessage.includes("gas")) {
+      errorMessage = "Gas estimation failed";
+    } else if (errorMessage.includes("invalid address") || errorMessage.includes("Invalid address")) {
+      errorMessage = "Invalid recipient address";
+    } else if (errorMessage.includes("ERC-20") || errorMessage.includes("Transfer Event")) {
+      errorMessage = "Token transfer error - check token contract";
+    }
+    
+    return { success: false, error: errorMessage };
+  }
+};
 
   // Add this function to check MATIC balance
   const checkMaticBalance = async () => {
