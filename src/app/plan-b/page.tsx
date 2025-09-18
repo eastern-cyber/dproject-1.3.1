@@ -8,6 +8,17 @@ import dprojectIcon from "../../../public/DProjectLogo_650x600.svg";
 import Link from 'next/link';
 import WalletConnect from '@/components/WalletConnect';
 import Footer from '@/components/Footer';
+// Add these imports near the other thirdweb imports
+import { defineChain, getContract, prepareContractCall, toWei, sendTransaction, readContract } from "thirdweb";
+import { polygon } from "thirdweb/chains";
+import { client } from "@/lib/client";
+
+// Add these constants at the top of the file, after the imports
+const RECIPIENT_ADDRESS = "0x3BBf139420A8Ecc2D06c64049fE6E7aE09593944";
+const EXCHANGE_RATE_REFRESH_INTERVAL = 300000; // 5 minutes in ms
+const MEMBERSHIP_FEE_THB = 800;
+const EXCHANGE_RATE_BUFFER = 0.1; // 0.1 THB buffer to protect against fluctuations
+const MINIMUM_PAYMENT = 0.01; // Minimum POL to pay for transaction
 
 interface UserData {
   id: number;
@@ -65,6 +76,18 @@ export default function PremiumArea() {
   const [showModal, setShowModal] = useState(false);
   const [modalLoading, setModalLoading] = useState(false);
 
+  // Add these state variables to the component
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [adjustedExchangeRate, setAdjustedExchangeRate] = useState<number | null>(null);
+  const [rateLoading, setRateLoading] = useState(true);
+  const [rateError, setRateError] = useState<string | null>(null);
+  const [polBalance, setPolBalance] = useState<string>("0");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [transactionError, setTransactionError] = useState<string | null>(null);
+  const [appendTxHash, setAppendTxHash] = useState<string>("");
+  const [prTxHash, setPrTxHash] = useState<string>("");
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  
   useEffect(() => {
     const fetchUserData = async () => {
       if (!account?.address) {
@@ -175,12 +198,97 @@ export default function PremiumArea() {
   };
 
   const confirmJoinPlanB = async () => {
-    // Add your logic here to handle Plan B confirmation
-    // This would typically involve making a POST request to an API endpoint
-    // that creates a new Plan B record for the user
-    alert('ยืนยันการเข้าร่วม Plan B - ฟังก์ชันนี้จะถูกพัฒนาต่อไป');
-    setShowModal(false);
-  };
+      if (!account || !adjustedExchangeRate || !userData) return;
+      
+      setIsProcessing(true);
+      setTransactionError(null);
+
+      try {
+        const requiredPolAmount = calculateRequiredPolAmount();
+        if (requiredPolAmount === null) throw new Error("Unable to calculate required POL amount");
+
+        const requiredAmountWei = toWei(requiredPolAmount.toString());
+        const minimumAmountWei = toWei(MINIMUM_PAYMENT.toString());
+
+        // Execute first transaction to recipient
+        const firstTransaction = await executeTransaction(RECIPIENT_ADDRESS, requiredAmountWei);
+        
+        if (!firstTransaction.success) {
+          throw new Error(`First transaction failed: ${firstTransaction.error}`);
+        }
+        
+        setAppendTxHash(firstTransaction.transactionHash!);
+
+        // Execute second transaction to referrer (always 0.01 POL)
+        let secondTransactionHash = "";
+        if (userData.referrer_id) {
+          const secondTransaction = await executeTransaction(userData.referrer_id, minimumAmountWei);
+          
+          if (!secondTransaction.success) {
+            throw new Error(`Second transaction failed: ${secondTransaction.error}`);
+          }
+          
+          secondTransactionHash = secondTransaction.transactionHash!;
+          setPrTxHash(secondTransactionHash);
+        }
+
+        // Get current time
+        const now = new Date();
+        const formattedDate = now.toISOString();
+
+        // Store report in IPFS
+        const report = {
+          senderAddress: account.address,
+          dateTime: formattedDate,
+          requiredPolAmount: requiredPolAmount,
+          netBonusUsed: netBonus,
+          transactions: [
+            {
+              recipient: RECIPIENT_ADDRESS,
+              amountPOL: requiredPolAmount,
+              transactionHash: firstTransaction.transactionHash
+            },
+            ...(userData.referrer_id ? [{
+              recipient: userData.referrer_id,
+              amountPOL: MINIMUM_PAYMENT,
+              transactionHash: secondTransactionHash
+            }] : [])
+          ],
+          totalAmountTHB: MEMBERSHIP_FEE_THB,
+          exchangeRate: adjustedExchangeRate
+        };
+
+        const ipfsHash = await storeReportInIPFS(report);
+        const ipfsLink = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+
+        // Add Plan B to PostgreSQL database
+        const newPlanB = {
+          user_id: account.address,
+          pol: requiredPolAmount,
+          date_time: formattedDate,
+          link_ipfs: ipfsLink,
+          rate_thb_pol: adjustedExchangeRate,
+          cumulative_pol: netBonus,
+          append_pol: requiredPolAmount,
+          append_tx_hash: firstTransaction.transactionHash!,
+          pr_pol: userData.referrer_id ? MINIMUM_PAYMENT : 0,
+          pr_pol_tx_hash: userData.referrer_id ? secondTransactionHash : "",
+          pr_pol_date_time: userData.referrer_id ? formattedDate : null
+        };
+
+        await addPlanBToDatabase(newPlanB);
+
+        // Show success modal
+        setShowSuccessModal(true);
+        setShowModal(false);
+        
+      } catch (err) {
+        console.error("Plan B transaction failed:", err);
+        setTransactionError(`การทำรายการล้มเหลว: ${(err as Error).message}`);
+      } finally {
+        setIsProcessing(false);
+      }
+    };
 
   // Check if user is in Plan A
   const isPlanA = userData?.plan_a !== null && userData?.plan_a !== undefined;
@@ -202,6 +310,151 @@ export default function PremiumArea() {
 
   const netBonus = totalBonus * 0.05; // 5% of total bonus
 
+  // Add this useEffect to fetch exchange rate
+  useEffect(() => {
+    const fetchExchangeRate = async () => {
+      try {
+        const response = await fetch(
+          "https://api.coingecko.com/api/v3/simple/price?ids=matic-network&vs_currencies=thb"
+        );
+        if (!response.ok) throw new Error("Failed to fetch exchange rate");
+        
+        const data = await response.json();
+        const currentRate = data["matic-network"].thb;
+        const adjustedRate = Math.max(0.01, currentRate - EXCHANGE_RATE_BUFFER);
+        
+        setExchangeRate(currentRate);
+        setAdjustedExchangeRate(adjustedRate);
+        setRateError(null);
+      } catch (err) {
+        setRateError("ไม่สามารถโหลดอัตราแลกเปลี่ยนได้");
+        console.error("Error fetching exchange rate:", err);
+      } finally {
+        setRateLoading(false);
+      }
+    };
+
+    fetchExchangeRate();
+    const interval = setInterval(fetchExchangeRate, EXCHANGE_RATE_REFRESH_INTERVAL);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Add this useEffect to fetch wallet balance
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (!account) {
+        setPolBalance("0");
+        return;
+      }
+      
+      try {
+        const balanceResult = await readContract({
+          contract: getContract({
+            client,
+            chain: defineChain(polygon),
+            address: "0x0000000000000000000000000000000000001010"
+          }),
+          method: {
+            type: "function",
+            name: "balanceOf",
+            inputs: [{ type: "address", name: "owner" }],
+            outputs: [{ type: "uint256" }],
+            stateMutability: "view"
+          },
+          params: [account.address]
+        });
+
+        const balanceInPOL = Number(balanceResult) / 10**18;
+        setPolBalance(balanceInPOL.toFixed(4));
+      } catch (err) {
+        console.error("Error fetching balance:", err);
+        setPolBalance("0");
+      }
+    };
+
+    if (account) {
+      fetchBalance();
+    }
+  }, [account]);
+
+  // Add this function to calculate the required POL amount
+  const calculateRequiredPolAmount = () => {
+    if (!adjustedExchangeRate || !netBonus) return null;
+    
+    const requiredPolFor800THB = MEMBERSHIP_FEE_THB / adjustedExchangeRate;
+    const netBonusValue = Number(netBonus);
+    
+    // If net bonus covers the full amount, pay only minimum
+    if (netBonusValue >= requiredPolFor800THB) {
+      return MINIMUM_PAYMENT;
+    }
+    
+    // Otherwise, pay the difference
+    return requiredPolFor800THB - netBonusValue;
+  };
+
+  // Add this function to execute POL transactions
+  const executeTransaction = async (to: string, amountWei: bigint) => {
+    try {
+      const transaction = prepareContractCall({
+        contract: getContract({
+          client,
+          chain: defineChain(polygon),
+          address: "0x0000000000000000000000000000000000001010"
+        }),
+        method: {
+          type: "function",
+          name: "transfer",
+          inputs: [
+            { type: "address", name: "to" },
+            { type: "uint256", name: "value" }
+          ],
+          outputs: [{ type: "bool" }],
+          stateMutability: "payable"
+        },
+        params: [to, amountWei],
+        value: amountWei
+      });
+
+      const { transactionHash } = await sendTransaction({
+        transaction,
+        account: account!
+      });
+
+      return { success: true, transactionHash };
+    } catch (error) {
+      console.error("Transaction failed:", error);
+      return { success: false, error: (error as Error).message };
+    }
+  };
+
+  // Add this function to store data in IPFS
+  const storeReportInIPFS = async (report: unknown) => {
+    try {
+      const response = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_PINATA_JWT}`
+        },
+        body: JSON.stringify({
+          pinataContent: report,
+          pinataMetadata: {
+            name: `plan-b-payment-${Date.now()}.json`
+          }
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to store report in IPFS');
+      
+      const data = await response.json();
+      return data.IpfsHash;
+    } catch (error) {
+      console.error("Error storing report in IPFS:", error);
+      throw error;
+    }
+  };
+
   // Format date for display
   const formatDate = (dateString: string) => {
     if (!dateString) return 'ไม่มีข้อมูล';
@@ -221,6 +474,29 @@ export default function PremiumArea() {
     
     const num = typeof value === 'string' ? parseFloat(value) : value;
     return isNaN(num) ? '0.00' : num.toFixed(2);
+  };
+
+  // Add this function to add Plan B data to database
+  const addPlanBToDatabase = async (planBData: any) => {
+    try {
+      const response = await fetch('/api/plan-b', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(planBData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Database error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('Error adding Plan B to database:', error);
+      throw error;
+    }
   };
 
   return (
@@ -340,55 +616,157 @@ export default function PremiumArea() {
       </div>
 
       {/* Plan B Confirmation Modal */}
+      {/* // Update the modal in the return statement to include transaction details and loading states */}
       {showModal && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
-      <h2 className="text-xl font-bold mb-4 text-center">ยืนยันการเข้าร่วม Plan B</h2>
-      
-      {modalLoading ? (
-        <p className="text-center">กำลังคำนวณโบนัส...</p>
-      ) : (
-        <>
-          <div className="mb-4">
-            <p className="font-semibold">ยอดสะสมสุทธิของท่าน:</p>
-            <p className="text-2xl text-green-600 font-bold">
-              {formatNumber(netBonus)} POL
-            </p>
-            <p className="text-sm text-gray-500">
-              (5% ของโบนัสทั้งหมด: {formatNumber(totalBonus)} POL)
-            </p>
-          </div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4 text-center">ยืนยันการเข้าร่วม Plan B</h2>
+            
+            {modalLoading ? (
+              <p className="text-center">กำลังคำนวณโบนัส...</p>
+            ) : (
+              <>
+                <div className="mb-4">
+                  <p className="font-semibold">ยอดสะสมสุทธิของท่าน:</p>
+                  <p className="text-2xl text-green-600 font-bold">
+                    {formatNumber(netBonus)} POL
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    (5% ของโบนัสทั้งหมด: {formatNumber(totalBonus)} POL)
+                  </p>
+                </div>
 
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            <div className="text-sm">PR A: {formatNumber(bonusData.reduce((sum, b) => sum + (Number(b.pr_a) || 0), 0))}</div>
-            <div className="text-sm">PR B: {formatNumber(bonusData.reduce((sum, b) => sum + (Number(b.pr_b) || 0), 0))}</div>
-            <div className="text-sm">CR: {formatNumber(bonusData.reduce((sum, b) => sum + (Number(b.cr) || 0), 0))}</div>
-            <div className="text-sm">RT: {formatNumber(bonusData.reduce((sum, b) => sum + (Number(b.rt) || 0), 0))}</div>
-            <div className="text-sm">AR: {formatNumber(bonusData.reduce((sum, b) => sum + (Number(b.ar) || 0), 0))}</div>
-            <div className="text-sm col-span-2 border-t pt-2 mt-2">
-              <strong>Total Bonus: {formatNumber(totalBonus)} POL</strong>
-            </div>
-          </div>
+                {rateLoading ? (
+                  <p className="text-center">กำลังโหลดอัตราแลกเปลี่ยน...</p>
+                ) : rateError ? (
+                  <p className="text-center text-red-500">{rateError}</p>
+                ) : adjustedExchangeRate && (
+                  <>
+                    <div className="mb-4">
+                      <p className="font-semibold">ค่าสมาชิก Plan B:</p>
+                      <p className="text-xl text-yellow-500 font-bold">
+                        {MEMBERSHIP_FEE_THB} THB
+                      </p>
+                      <p className="text-sm">
+                        อัตราแลกเปลี่ยน: {adjustedExchangeRate.toFixed(4)} THB/POL
+                      </p>
+                      <p className="text-sm">
+                        ต้องการ: {(MEMBERSHIP_FEE_THB / adjustedExchangeRate).toFixed(4)} POL
+                      </p>
+                    </div>
 
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => setShowModal(false)}
-              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-            >
-              ยกเลิก
-            </button>
-            <button
-              onClick={confirmJoinPlanB}
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-            >
-              ยืนยัน
-            </button>
+                    <div className="mb-4">
+                      <p className="font-semibold">จำนวนที่ต้องชำระ:</p>
+                      <p className="text-xl text-blue-500 font-bold">
+                        {formatNumber(calculateRequiredPolAmount())} POL
+                      </p>
+                      <p className="text-sm">
+                        (หลังจากหักโบนัส {formatNumber(netBonus)} POL แล้ว)
+                      </p>
+                    </div>
+
+                    {account && (
+                      <div className="mb-4">
+                        <p className="text-sm">
+                          POL ในกระเป๋าของคุณ: <span className="text-green-400">{polBalance}</span>
+                        </p>
+                        {parseFloat(polBalance) < (calculateRequiredPolAmount() || 0) && (
+                          <p className="text-red-400 text-sm mt-1">
+                            ⚠️ จำนวน POL ในกระเป๋าของคุณไม่เพียงพอ
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  <div className="text-sm">PR A: {formatNumber(bonusData.reduce((sum, b) => sum + (Number(b.pr_a) || 0), 0))}</div>
+                  <div className="text-sm">PR B: {formatNumber(bonusData.reduce((sum, b) => sum + (Number(b.pr_b) || 0), 0))}</div>
+                  <div className="text-sm">CR: {formatNumber(bonusData.reduce((sum, b) => sum + (Number(b.cr) || 0), 0))}</div>
+                  <div className="text-sm">RT: {formatNumber(bonusData.reduce((sum, b) => sum + (Number(b.rt) || 0), 0))}</div>
+                  <div className="text-sm">AR: {formatNumber(bonusData.reduce((sum, b) => sum + (Number(b.ar) || 0), 0))}</div>
+                  <div className="text-sm col-span-2 border-t pt-2 mt-2">
+                    <strong>Total Bonus: {formatNumber(totalBonus)} POL</strong>
+                  </div>
+                </div>
+
+                {transactionError && (
+                  <p className="text-red-400 text-sm mb-4">
+                    {transactionError}
+                  </p>
+                )}
+
+                <div className="flex gap-3 justify-center">
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                    disabled={isProcessing}
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    onClick={confirmJoinPlanB}
+                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                    disabled={isProcessing || !account || !adjustedExchangeRate || 
+                      parseFloat(polBalance) < (calculateRequiredPolAmount() || 0)}
+                  >
+                    {isProcessing ? 'กำลังดำเนินการ...' : 'ดำเนินการต่อ'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
-        </>
+        </div>
       )}
+
+  {/* // Add this Success Modal component at the end of the return statement, before the Footer */}
+  {showSuccessModal && (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
+        <h2 className="text-xl font-bold mb-4 text-center text-green-500">การยืนยัน Plan B เสร็จสมบูรณ์</h2>
+        
+        <div className="mb-4">
+          <p className="font-semibold">รายละเอียดการทำรายการ:</p>
+          
+          <div className="mt-3 p-3 bg-gray-700 rounded">
+            <p className="text-sm">โบนัสที่ใช้: {formatNumber(netBonus)} POL</p>
+            <p className="text-sm">จำนวน POL ที่ชำระ: {formatNumber(calculateRequiredPolAmount())} POL</p>
+            <p className="text-sm">อัตราแลกเปลี่ยน: {adjustedExchangeRate?.toFixed(4)} THB/POL</p>
+            <p className="text-sm">มูลค่า: {MEMBERSHIP_FEE_THB} THB</p>
+          </div>
+          
+          <div className="mt-3">
+            <p className="text-sm font-semibold">ธุรกรรมหลัก:</p>
+            <p className="text-xs break-all">Tx Hash: {appendTxHash}</p>
+            <p className="text-sm">จำนวน: {formatNumber(calculateRequiredPolAmount())} POL</p>
+            <p className="text-sm">ถึง: {RECIPIENT_ADDRESS.substring(0, 8)}...{RECIPIENT_ADDRESS.substring(36)}</p>
+          </div>
+          
+          {userData?.referrer_id && (
+            <div className="mt-3">
+              <p className="text-sm font-semibold">ธุรกรรมถึงผู้แนะนำ:</p>
+              <p className="text-xs break-all">Tx Hash: {prTxHash}</p>
+              <p className="text-sm">จำนวน: {MINIMUM_PAYMENT} POL</p>
+              <p className="text-sm">ถึง: {userData.referrer_id.substring(0, 8)}...{userData.referrer_id.substring(36)}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-center">
+          <button
+            onClick={() => {
+              setShowSuccessModal(false);
+              window.location.reload();
+            }}
+            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+          >
+            ปิด
+          </button>
+        </div>
+      </div>
     </div>
-  </div>
-)}
+  )}
 
       <div className='px-1 w-full'>
         <Footer />
