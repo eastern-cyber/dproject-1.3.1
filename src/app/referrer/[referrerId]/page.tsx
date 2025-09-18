@@ -127,11 +127,9 @@ export default function ReferrerDetails({ params }: { params: Promise<{ referrer
                         <p className="text-gray-600 text-sm mt-2">ไม่พบข้อมูลผู้แนะนำ</p>
                     )}
                     
-                    <div className="items-centerflex border border-gray-400 bg-[#2b2b59] p-2.5 mt-5 w-full">
+                    <div className="text-center items-centerflex border border-gray-400 bg-[#2b2b59] p-2.5 mt-5 w-full">
                         <p className="text-[18px] break-all">
-                            <center>
                             {resolvedParams.referrerId ? `${resolvedParams.referrerId}` : "ไม่พบกระเป๋า"}
-                            </center>
                         </p>
                     </div>
                 </div>
