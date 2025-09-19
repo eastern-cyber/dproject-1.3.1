@@ -12,7 +12,8 @@ import Footer from '@/components/Footer';
 import { defineChain, getContract, prepareContractCall, toWei, sendTransaction, readContract, prepareTransaction } from "thirdweb";
 import { polygon } from "thirdweb/chains";
 import { client } from "@/lib/client";
-
+// Import the useRouter hook at the top of your file
+import { useRouter } from 'next/navigation';
 
 // Add these constants at the top of the file, after the imports
 const RECIPIENT_ADDRESS = "0x3BBf139420A8Ecc2D06c64049fE6E7aE09593944";
@@ -91,6 +92,9 @@ export default function PremiumArea() {
   
   // Add this state variable
   const [maticBalance, setMaticBalance] = useState(0);
+
+  // Inside the component function, initialize the router
+  const router = useRouter();
 
   // Add this useEffect to check MATIC balance
   useEffect(() => {
@@ -938,15 +942,22 @@ const confirmJoinPlanB = async () => {
           )}
         </div>
 
+        {/* // Update the button onClick handler */}
         <div className="flex justify-center">
           <button
             onClick={() => {
               setShowSuccessModal(false);
-              window.location.reload();
+              // Redirect to the user's plan-b page
+              if (userData && userData.user_id) {
+                router.push(`/plan-b/${userData.user_id}`);
+              } else {
+                // Fallback to home if userData is not available
+                router.push('/');
+              }
             }}
             className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
           >
-            ปิด
+            เสร็จสิ้นกระบวนการ
           </button>
         </div>
       </div>
