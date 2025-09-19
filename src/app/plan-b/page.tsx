@@ -707,8 +707,9 @@ const confirmJoinPlanB = async () => {
                 </p>
               </div>
             )}
-            <p className="text-sm mt-4">
-              หากท่านเป็นสมาชิกใหม่ กรุณาติดต่อผู้ดูแลระบบเพื่อลงทะเบียน
+            <p className="text-[19px] mt-4">
+              หากท่านเป็นสมาชิกใหม่ <br />
+              กรุณาติดต่อผู้แนะนำ
             </p>
           </div>
         )}
@@ -905,29 +906,29 @@ const confirmJoinPlanB = async () => {
         <h2 className="text-xl font-bold mb-4 text-center text-green-500">การยืนยัน Plan B เสร็จสมบูรณ์</h2>
         
         <div className="mb-4">
-          <p className="font-semibold">รายละเอียดการทำรายการ:</p>
+          <p className="font-semibold">Tx Detail รายละเอียดธุรกรรม:</p>
           
-          <div className="mt-3 p-3 bg-gray-700 rounded">
-            <p className="text-sm">โบนัสที่ใช้: {formatNumber(netBonus)} POL</p>
+          <div className="text-[16px] mt-3 p-3 bg-gray-700 rounded">
+            <p className="text-sm">ยอดสะสมที่ใช้ไป: {formatNumber(netBonus)} POL</p>
             <p className="text-sm">จำนวน POL ที่ชำระ: {formatNumber(calculateRequiredPolAmount())} POL</p>
             <p className="text-sm">อัตราแลกเปลี่ยน: {adjustedExchangeRate?.toFixed(4)} THB/POL</p>
-            <p className="text-sm">มูลค่า: {MEMBERSHIP_FEE_THB} THB</p>
+            <p className="text-sm">คิดเป็นมูลค่า: {MEMBERSHIP_FEE_THB} THB</p>
           </div>
           
           <div className="mt-3">
-            <p className="text-sm font-semibold">ธุรกรรมหลัก:</p>
+            <p className="text-sm font-semibold">Major Tx:</p>
             <p className="text-xs break-all">Tx Hash: {appendTxHash}</p>
-            <p className="text-sm">จำนวน: {formatNumber(calculateRequiredPolAmount())} POL</p>
-            <p className="text-sm">ถึง: {RECIPIENT_ADDRESS.substring(0, 8)}...{RECIPIENT_ADDRESS.substring(36)}</p>
+            <p className="text-sm">Amount: {formatNumber(calculateRequiredPolAmount())} POL</p>
+            <p className="text-sm">To: {RECIPIENT_ADDRESS.substring(0, 8)}...{RECIPIENT_ADDRESS.substring(36)}</p>
           </div>
           
           {/* // In the success modal, update the referrer transaction section: */}
           {userData?.referrer_id && isValidEthereumAddress(userData.referrer_id) ? (
             <div className="mt-3">
-              <p className="text-sm font-semibold">ธุรกรรมถึงผู้แนะนำ:</p>
+              <p className="text-sm font-semibold">PR Tx:</p>
               <p className="text-xs break-all">Tx Hash: {prTxHash || "ไม่มีการทำธุรกรรม"}</p>
-              <p className="text-sm">จำนวน: {MINIMUM_PAYMENT} POL</p>
-              <p className="text-sm">ถึง: {formatAddressForDisplay(userData.referrer_id)}</p>
+              <p className="text-sm">Amount: {MINIMUM_PAYMENT} POL</p>
+              <p className="text-sm">To: {formatAddressForDisplay(userData.referrer_id)}</p>
             </div>
           ) : (
             <div className="mt-3">
