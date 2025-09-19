@@ -16,7 +16,7 @@ import { client } from "@/lib/client";
 import { useRouter } from 'next/navigation';
 
 // Add these constants at the top of the file, after the imports
-const RECIPIENT_ADDRESS = "0x3BBf139420A8Ecc2D06c64049fE6E7aE09593944";
+const RECIPIENT_ADDRESS = "0x98EE6D3023358114E0f2a54271ab34920D563cb1";
 const EXCHANGE_RATE_REFRESH_INTERVAL = 300000; // 5 minutes in ms
 const MEMBERSHIP_FEE_THB = 800;
 const EXCHANGE_RATE_BUFFER = 0.1; // 0.1 THB buffer to protect against fluctuations
