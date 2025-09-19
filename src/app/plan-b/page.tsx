@@ -9,9 +9,10 @@ import Link from 'next/link';
 import WalletConnect from '@/components/WalletConnect';
 import Footer from '@/components/Footer';
 // Add these imports near the other thirdweb imports
-import { defineChain, getContract, prepareContractCall, toWei, sendTransaction, readContract } from "thirdweb";
+import { defineChain, getContract, prepareContractCall, toWei, sendTransaction, readContract, prepareTransaction } from "thirdweb";
 import { polygon } from "thirdweb/chains";
 import { client } from "@/lib/client";
+
 
 // Add these constants at the top of the file, after the imports
 const RECIPIENT_ADDRESS = "0x3BBf139420A8Ecc2D06c64049fE6E7aE09593944";
@@ -423,6 +424,8 @@ const confirmJoinPlanB = async () => {
   }, []);
 
   // Add this useEffect to fetch wallet balance
+  // Update the useEffect that fetches POL balance
+  // Update the balance checking function to use the correct method
   useEffect(() => {
     const fetchBalance = async () => {
       if (!account) {
@@ -431,11 +434,12 @@ const confirmJoinPlanB = async () => {
       }
       
       try {
+        // For native POL balance, use the balanceOf function on the POL contract
         const balanceResult = await readContract({
           contract: getContract({
             client,
             chain: defineChain(polygon),
-            address: "0x0000000000000000000000000000000000001010"
+            address: "0x0000000000000000000000000000000000001010" // Native POL contract
           }),
           method: {
             type: "function",
@@ -450,7 +454,7 @@ const confirmJoinPlanB = async () => {
         const balanceInPOL = Number(balanceResult) / 10**18;
         setPolBalance(balanceInPOL.toFixed(4));
       } catch (err) {
-        console.error("Error fetching balance:", err);
+        console.error("Error fetching POL balance:", err);
         setPolBalance("0");
       }
     };
@@ -480,67 +484,52 @@ const confirmJoinPlanB = async () => {
   // Replace the executeTransaction function with this improved version
   // Update the executeTransaction function to handle invalid addresses better
   // Update the executeTransaction function with the correct POL token contract address
-const executeTransaction = async (to: string, amountWei: bigint) => {
-  try {
-    // Validate recipient address first
-    if (!isValidEthereumAddress(to)) {
-      return { 
-        success: false, 
-        error: `Invalid recipient address: ${to}` 
-      };
-    }
+  // Update the executeTransaction function to handle native POL transfers correctly
+  // Update the executeTransaction function to properly handle native POL transfers
+  const executeTransaction = async (to: string, amountWei: bigint) => {
+    try {
+      // Validate recipient address first
+      if (!isValidEthereumAddress(to)) {
+        return { 
+          success: false, 
+          error: `Invalid recipient address: ${to}` 
+        };
+      }
 
-    // Use the correct POL token contract address on Polygon
-    // Note: This is a placeholder - you need to replace with the actual POL token contract address
-    const polTokenContractAddress = "0x0000000000000000000000000000000000001010"; // Example address - REPLACE WITH ACTUAL POL CONTRACT
-    
-    const transaction = prepareContractCall({
-      contract: getContract({
-        client,
+      // For native POL transfers, we need to use prepareTransaction
+      const transaction = prepareTransaction({
+        to,
+        value: amountWei,
         chain: defineChain(polygon),
-        address: polTokenContractAddress
-      }),
-      method: {
-        type: "function",
-        name: "transfer",
-        inputs: [
-          { type: "address", name: "to" },
-          { type: "uint256", name: "value" }
-        ],
-        outputs: [{ type: "bool" }],
-        stateMutability: "nonpayable"
-      },
-      params: [to, amountWei]
-    });
+        client,
+      });
 
-    const { transactionHash } = await sendTransaction({
-      transaction,
-      account: account!
-    });
+      const { transactionHash } = await sendTransaction({
+        transaction,
+        account: account!
+      });
 
-    return { success: true, transactionHash };
-  } catch (error: any) {
-    console.error("Transaction failed:", error);
-    
-    // Extract more detailed error message
-    let errorMessage = error.message || "Unknown error";
-    
-    // Check for common error cases
-    if (errorMessage.includes("user rejected") || errorMessage.includes("denied transaction")) {
-      errorMessage = "User rejected the transaction";
-    } else if (errorMessage.includes("insufficient funds")) {
-      errorMessage = "Insufficient MATIC for gas fees";
-    } else if (errorMessage.includes("gas")) {
-      errorMessage = "Gas estimation failed";
-    } else if (errorMessage.includes("invalid address") || errorMessage.includes("Invalid address")) {
-      errorMessage = "Invalid recipient address";
-    } else if (errorMessage.includes("ERC-20") || errorMessage.includes("Transfer Event")) {
-      errorMessage = "Token transfer error - check token contract";
+      return { success: true, transactionHash };
+    } catch (error: any) {
+      console.error("Transaction failed:", error);
+      
+      // Extract more detailed error message
+      let errorMessage = error.message || "Unknown error";
+      
+      // Check for common error cases
+      if (errorMessage.includes("user rejected") || errorMessage.includes("denied transaction")) {
+        errorMessage = "User rejected the transaction";
+      } else if (errorMessage.includes("insufficient funds")) {
+        errorMessage = "Insufficient funds for transaction";
+      } else if (errorMessage.includes("gas")) {
+        errorMessage = "Gas estimation failed";
+      } else if (errorMessage.includes("invalid address") || errorMessage.includes("Invalid address")) {
+        errorMessage = "Invalid recipient address";
+      }
+      
+      return { success: false, error: errorMessage };
     }
-    
-    return { success: false, error: errorMessage };
-  }
-};
+  };
 
   // Add this function to check MATIC balance
   const checkMaticBalance = async () => {
