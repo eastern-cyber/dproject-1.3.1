@@ -804,7 +804,7 @@ const executeTransaction = async (to: string, amountWei: bigint) => {
             <h2 className="text-xl font-bold mb-4 text-center">ยืนยันการเข้าร่วม Plan B</h2>
             
             {modalLoading ? (
-              <p className="text-center">กำลังคำนวณโบนัส...</p>
+              <p className="text-center">กำลังคำนวณยอดสะสม...</p>
             ) : (
               <>
                 <div className="mb-4">
@@ -832,7 +832,7 @@ const executeTransaction = async (to: string, amountWei: bigint) => {
                         อัตราแลกเปลี่ยน: {adjustedExchangeRate.toFixed(4)} THB/POL
                       </p>
                       <p className="text-sm">
-                        ต้องการ: {(MEMBERSHIP_FEE_THB / adjustedExchangeRate).toFixed(4)} POL
+                        คิดเป็นมูลค่า: {(MEMBERSHIP_FEE_THB / adjustedExchangeRate).toFixed(4)} POL
                       </p>
                     </div>
 
@@ -842,7 +842,7 @@ const executeTransaction = async (to: string, amountWei: bigint) => {
                         {formatNumber(calculateRequiredPolAmount())} POL
                       </p>
                       <p className="text-sm">
-                        (หลังจากหักโบนัส {formatNumber(netBonus)} POL แล้ว)
+                        (หลังจากหักยอดสะสม {formatNumber(netBonus)} POL แล้ว)
                       </p>
                     </div>
 
