@@ -43,12 +43,12 @@ interface UserData {
 interface PlanBData {
   id: number;
   user_id: string;
-  pol: number;
-  date_time: string;
+  cumulative_pol: number;
+  cumulative_pol_date_time: string;
   link_ipfs: string;
   rate_thb_pol: number;
-  cumulative_pol: number;
   append_pol: number;
+  append_pol_date_time: string;
   append_tx_hash: string;
   created_at: string;
   updated_at: string;
@@ -238,6 +238,7 @@ const executeWithRetry = async (transactionFn: () => Promise<any>, retries = 3, 
 };
 
 // Update the confirmJoinPlanB function with better error handling
+// Update the confirmJoinPlanB function to handle database errors gracefully
 const confirmJoinPlanB = async () => {
   if (!account || !adjustedExchangeRate || !userData) return;
   
@@ -263,8 +264,6 @@ const confirmJoinPlanB = async () => {
     console.log('First transaction successful:', firstTransaction.transactionHash);
 
     // Execute second transaction to referrer (always 0.01 POL)
-    // Replace the second transaction section in confirmJoinPlanB with this:
-    // Execute second transaction to referrer (always 0.01 POL) only if valid address
     let secondTransactionHash = "";
     const referrerAddress = getValidReferrerAddress();
 
@@ -277,8 +276,6 @@ const confirmJoinPlanB = async () => {
         
         if (!secondTransaction.success) {
           console.warn('Second transaction failed, but continuing:', secondTransaction.error);
-          // We don't throw an error here because the main transaction succeeded
-          // Just log the warning and continue
         } else {
           secondTransactionHash = secondTransaction.transactionHash!;
           setPrTxHash(secondTransactionHash);
@@ -286,7 +283,6 @@ const confirmJoinPlanB = async () => {
         }
       } catch (error) {
         console.warn('Second transaction failed, but continuing:', error);
-        // Continue even if the second transaction fails
       }
     } else {
       console.log('No valid referrer address, skipping second transaction');
@@ -325,48 +321,37 @@ const confirmJoinPlanB = async () => {
       ipfsLink = ipfsHash ? `https://gateway.pinata.cloud/ipfs/${ipfsHash}` : "";
     } catch (ipfsError) {
       console.warn('IPFS storage failed, continuing without it:', ipfsError);
-      // We can continue without IPFS storage
     }
 
-    // // Add Plan B to PostgreSQL database
-    // const newPlanB = {
-    //   user_id: account.address,
-    //   pol: requiredPolAmount,
-    //   date_time: formattedDate,
-    //   link_ipfs: ipfsLink,
-    //   rate_thb_pol: adjustedExchangeRate,
-    //   cumulative_pol: netBonus,
-    //   append_pol: requiredPolAmount,
-    //   append_tx_hash: firstTransaction.transactionHash!,
-    //   pr_pol: userData.referrer_id ? MINIMUM_PAYMENT : 0,
-    //   pr_pol_tx_hash: userData.referrer_id ? secondTransactionHash : "",
-    //   pr_pol_date_time: userData.referrer_id ? formattedDate : null
-    // };
+    // Try to add to database, but don't fail the whole process if it errors
+    try {
+      const newPlanB = {
+        user_id: account.address,
+        pol: requiredPolAmount,
+        date_time: formattedDate,
+        link_ipfs: ipfsLink,
+        rate_thb_pol: adjustedExchangeRate,
+        cumulative_pol: netBonus,
+        append_pol: requiredPolAmount,
+        append_tx_hash: firstTransaction.transactionHash!,
+        pr_pol: referrerAddress ? MINIMUM_PAYMENT : 0,
+        pr_pol_tx_hash: referrerAddress ? secondTransactionHash : "",
+        pr_pol_date_time: referrerAddress ? formattedDate : null
+      };
 
-    // Update the newPlanB object creation
-    const newPlanB = {
-      user_id: account.address,
-      pol: requiredPolAmount,
-      date_time: formattedDate,
-      link_ipfs: ipfsLink,
-      rate_thb_pol: adjustedExchangeRate,
-      cumulative_pol: netBonus,
-      append_pol: requiredPolAmount,
-      append_tx_hash: firstTransaction.transactionHash!,
-      pr_pol: referrerAddress ? MINIMUM_PAYMENT : 0,
-      pr_pol_tx_hash: referrerAddress ? secondTransactionHash : "",
-      pr_pol_date_time: referrerAddress ? formattedDate : null
-    };
-
-    console.log('Adding Plan B to database...');
-    if (process.env.NODE_ENV === 'development') {
-      await addPlanBToDatabaseDev(newPlanB);
-    } else {
-      await addPlanBToDatabase(newPlanB);
+      console.log('Adding Plan B to database...');
+      if (process.env.NODE_ENV === 'development') {
+        await addPlanBToDatabaseDev(newPlanB);
+      } else {
+        await addPlanBToDatabase(newPlanB);
+      }
+      console.log('Database update successful');
+    } catch (dbError) {
+      console.warn('Database update failed, but continuing:', dbError);
+      // Don't throw error - just log it and continue
     }
-    console.log('Database update successful');
 
-    // Show success modal
+    // Show success modal regardless of database result
     setShowSuccessModal(true);
     setShowModal(false);
     
@@ -749,12 +734,11 @@ const confirmJoinPlanB = async () => {
             {/* Display Plan B details if available */}
             {isPlanB && planBData && (
               <div className="w-full mt-4 p-3 border border-green-500 rounded-lg">
-                <h3 className="p-4 text-[24px] text-green-400">ยอดสะสม Plan B</h3>
-                <p>POL: {formatNumber(planBData.pol)}</p>
-                <p>Rate: {formatNumber(planBData.rate_thb_pol)} THB/POL</p>
-                <p>วันที่: {formatDate(planBData.date_time)}</p>
+                <h3 className="p-4 text-[24px] text-green-400">รายละเอียด Plan B</h3>
                 <p>Cumulative POL: {formatNumber(planBData.cumulative_pol)}</p>
                 <p>Append POL: {formatNumber(planBData.append_pol)}</p>
+                <p>Rate: {formatNumber(planBData.rate_thb_pol)} THB/POL</p>
+                <p>วันที่เข้าร่วม: {formatDate(planBData.append_pol_date_time)}</p>
                 {planBData.append_tx_hash && (
                   <p className="text-xs font-mono">Tx: {planBData.append_tx_hash.substring(0, 20)}...</p>
                 )}
