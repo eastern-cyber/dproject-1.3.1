@@ -121,7 +121,7 @@ export default function UserDetails({ params }: { params: Promise<{ userId: stri
                     />
                 </Link>
                 <h1 className="p-4 text-2xl font-semibold md:font-bold tracking-tighter text-center">
-                    สมัครใช้งาน
+                    D Project
                 </h1>
                 <div className="flex justify-center m-3">
                     <WalletConnect />

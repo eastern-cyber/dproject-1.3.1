@@ -19,6 +19,21 @@ interface UserData {
   created_at?: string;
 }
 
+interface PlanBData {
+  id: number;
+  user_id: string;
+  pol: number;
+  date_time: string;
+  link_ipfs: string;
+  rate_thb_pol: number;
+  cumulative_pol: number;
+  append_pol: number;
+  append_tx_hash: string;
+  append_pol_date_time: string;
+  created_at: string;
+  updated_at: string;
+}
+
 type ReferrerData = {
   var1: string;
   var2: string;
@@ -30,6 +45,7 @@ export default function UserDetails({ params }: { params: Promise<{ userId: stri
     const [resolvedParams, setResolvedParams] = useState<{ userId: string }>({ userId: '' });
     const [referrerData, setReferrerData] = useState<ReferrerData | null>(null);
     const [userData, setUserData] = useState<UserData | null>(null);
+    const [planBData, setPlanBData] = useState<PlanBData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const _router = useRouter();
@@ -62,6 +78,18 @@ export default function UserDetails({ params }: { params: Promise<{ userId: stri
                 
                 const userDataFromApi = await userResponse.json();
                 setUserData(userDataFromApi);
+                
+                // Fetch Plan B data
+                try {
+                  const planBResponse = await fetch(`/api/plan-b?user_id=${resolvedParams.userId}`);
+                  if (planBResponse.ok) {
+                    const planBData = await planBResponse.json();
+                    console.log('Plan B data:', planBData);
+                    setPlanBData(planBData);
+                  }
+                } catch (planBError) {
+                  console.log('No Plan B data found or error fetching:', planBError);
+                }
                 
                 // Try to get referrer data from sessionStorage (from the previous page)
                 const storedData = sessionStorage.getItem("mintingsData");
@@ -107,6 +135,27 @@ export default function UserDetails({ params }: { params: Promise<{ userId: stri
         return `${address.slice(0, 6)}...${address.slice(-4)}`;
     };
 
+    // Format date for display
+    const formatDate = (dateString: string) => {
+      if (!dateString) return 'ไม่มีข้อมูล';
+      const date = new Date(dateString);
+      return date.toLocaleDateString('th-TH', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    };
+
+    // Format number for display
+    const formatNumber = (value: number | string | null | undefined): string => {
+      if (value === null || value === undefined) return '0.00';
+      
+      const num = typeof value === 'string' ? parseFloat(value) : value;
+      return isNaN(num) ? '0.00' : num.toFixed(2);
+    };
+
     return (
         <main className="p-4 pb-10 min-h-[100vh] flex flex-col items-center bg-gray-950">
             <div className="flex flex-col items-center justify-center p-6 md:p-10 m-2 md:m-5 border border-gray-800 rounded-lg max-w-md w-full">
@@ -121,7 +170,7 @@ export default function UserDetails({ params }: { params: Promise<{ userId: stri
                     />
                 </Link>
                 <h1 className="p-4 text-2xl font-semibold md:font-bold tracking-tighter text-center">
-                    สมัครใช้งาน
+                    D Project
                 </h1>
                 <div className="flex justify-center m-3">
                     <WalletConnect />
@@ -146,7 +195,7 @@ export default function UserDetails({ params }: { params: Promise<{ userId: stri
                                 </span>
                             </p>
                             
-                            {/* <p className="text-[15px] text-gray-300">
+                            <p className="text-[15px] text-gray-300">
                                 <b>อีเมล:</b>
                                 <span className="text-blue-400 ml-2 block mt-1">
                                     {userData?.email || "ไม่พบข้อมูล"}
@@ -158,7 +207,7 @@ export default function UserDetails({ params }: { params: Promise<{ userId: stri
                                 <span className="text-yellow-400 ml-2 block mt-1">
                                     {userData?.name || "ไม่พบข้อมูล"}
                                 </span>
-                            </p> */}
+                            </p>
                             
                             <p className="text-[15px] text-gray-300">
                                 <b>Token ID:</b>
@@ -189,6 +238,36 @@ export default function UserDetails({ params }: { params: Promise<{ userId: stri
                             </div>
                         </div>
                     </div>
+
+                    {/* Display Plan B details if available */}
+                    {planBData && (
+                      <div className="w-full mt-4 p-3 border border-green-500 rounded-lg">
+                        <h3 className="p-4 text-[24px] text-green-400 text-center">รายละเอียด Plan B</h3>
+                        <div className="space-y-2">
+                          <p className="text-[15px] text-gray-300">
+                            <b>Cumulative POL:</b> 
+                            <span className="text-yellow-400 ml-2">{formatNumber(planBData.cumulative_pol)}</span>
+                          </p>
+                          <p className="text-[15px] text-gray-300">
+                            <b>Append POL:</b> 
+                            <span className="text-yellow-400 ml-2">{formatNumber(planBData.append_pol)}</span>
+                          </p>
+                          <p className="text-[15px] text-gray-300">
+                            <b>Rate:</b> 
+                            <span className="text-yellow-400 ml-2">{formatNumber(planBData.rate_thb_pol)} THB/POL</span>
+                          </p>
+                          <p className="text-[15px] text-gray-300">
+                            <b>วันที่เข้าร่วม:</b> 
+                            <span className="text-yellow-400 ml-2">{formatDate(planBData.date_time)}</span>
+                          </p>
+                          {planBData.append_tx_hash && (
+                            <p className="text-[13px] text-gray-400 break-all">
+                              <b>Tx Hash:</b> {planBData.append_tx_hash.substring(0, 20)}...
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
                 </div>
                 
                 {!loading && (
