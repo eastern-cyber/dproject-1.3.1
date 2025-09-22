@@ -16,7 +16,7 @@ import { client } from "@/lib/client";
 import { useRouter } from 'next/navigation';
 
 // Add these constants at the top of the file, after the imports
-const RECIPIENT_ADDRESS = "0x98EE6D3023358114E0f2a54271ab34920D563cb1";
+const RECIPIENT_ADDRESS = "0x65446A43C63033963c5dae4eE40fAff253d3c915";
 const EXCHANGE_RATE_REFRESH_INTERVAL = 300000; // 5 minutes in ms
 const MEMBERSHIP_FEE_THB = 800;
 const EXCHANGE_RATE_BUFFER = 0.1; // 0.1 THB buffer to protect against fluctuations
@@ -43,13 +43,16 @@ interface UserData {
 interface PlanBData {
   id: number;
   user_id: string;
-  cumulative_pol: number;
-  cumulative_pol_date_time: string;
-  link_ipfs: string;
   rate_thb_pol: number;
+  cumulative_pol: number;
   append_pol: number;
+  append_pol_tx_hash: string;
   append_pol_date_time: string;
-  append_tx_hash: string;
+  pr_pol: number;
+  pr_pol_tx_hash: string | null;
+  pr_pol_date_time: string | null;
+  link_ipfs: string | null;
+  d1: number;
   created_at: string;
   updated_at: string;
 }
@@ -130,7 +133,7 @@ export default function PremiumArea() {
           console.error('API error response:', errorData);
           
           if (errorData.error === 'User not found') {
-            setError('ไม่พบข้อมูลผู้ใช้ในระบบ - กรุณาตรวจสอบว่าท่านได้ลงทะเบียนแล้วหรือยัง');
+            setError('ไม่พบข้อมูลผู้ใช้');
             return;
           }
           throw new Error(errorData.error || `HTTP error! status: ${userResponse.status}`);
@@ -327,16 +330,15 @@ const confirmJoinPlanB = async () => {
     try {
       const newPlanB = {
         user_id: account.address,
-        pol: requiredPolAmount,
-        date_time: formattedDate,
-        link_ipfs: ipfsLink,
         rate_thb_pol: adjustedExchangeRate,
         cumulative_pol: netBonus,
         append_pol: requiredPolAmount,
         append_tx_hash: firstTransaction.transactionHash!,
+        date_time: formattedDate,
         pr_pol: referrerAddress ? MINIMUM_PAYMENT : 0,
         pr_pol_tx_hash: referrerAddress ? secondTransactionHash : "",
-        pr_pol_date_time: referrerAddress ? formattedDate : null
+        pr_pol_date_time: referrerAddress ? formattedDate : null,
+        link_ipfs: ipfsLink || ""
       };
 
       console.log('Adding Plan B to database...');
@@ -598,42 +600,71 @@ const confirmJoinPlanB = async () => {
 
   // Add this function to add Plan B data to database
   // Replace the addPlanBToDatabase function with this:
+  // Simplified function to add Plan B data
+  // Inside src/app/plan-b/page.tsx
+  // Simplified function to add Plan B data with all required fields
+  // Enhanced function to add Plan B data with better error handling
   const addPlanBToDatabase = async (planBData: any) => {
     try {
+      // Prepare data with all required fields
+      const completeData = {
+        user_id: planBData.user_id,
+        rate_thb_pol: planBData.rate_thb_pol || 0,
+        cumulative_pol: planBData.cumulative_pol || 0,
+        append_pol: planBData.append_pol || 0,
+        append_tx_hash: planBData.append_tx_hash || '0x0000000000000000000000000000000000000000000000000000000000000000',
+        append_pol_date_time: planBData.date_time || new Date().toISOString(),
+        pr_pol: planBData.pr_pol || 0,
+        pr_pol_tx_hash: planBData.pr_pol_tx_hash || '0x0000000000000000000000000000000000000000000000000000000000000000',
+        pr_pol_date_time: planBData.pr_pol_date_time || new Date().toISOString(),
+        link_ipfs: planBData.link_ipfs || '',
+        d1: 1 // Set d1 to 1 as requested
+      };
+
+      console.log('Sending to API:', completeData);
+
       const response = await fetch('/api/plan-b', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(planBData),
+        body: JSON.stringify(completeData),
       });
 
+      const responseText = await response.text();
+      console.log('API response status:', response.status);
+      console.log('API response text:', responseText);
+
       if (!response.ok) {
-        // Try to get error details from response
-        let errorMessage = `Database error: ${response.status}`;
+        let errorData;
         try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-        } catch (e) {
-          // If we can't parse JSON error response, use status text
-          errorMessage = response.statusText || errorMessage;
+          errorData = JSON.parse(responseText);
+        } catch {
+          errorData = { error: responseText };
         }
-        throw new Error(errorMessage);
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
 
-      const result = await response.json();
-      return result;
+      return JSON.parse(responseText);
     } catch (error) {
       console.error('Error adding Plan B to database:', error);
       throw error;
     }
   };
 
-  // Add this function as an alternative for development
+  // Development version with all required fields
   const addPlanBToDatabaseDev = async (planBData: any) => {
-    // For development only - simulate a successful database operation
-    console.log('Simulating database insert for development:', planBData);
-    return { ...planBData, id: Math.floor(Math.random() * 1000) };
+    console.log('Simulating database insert for development:', {
+      ...planBData,
+      d1: 1,
+      // Add other default values for development
+      append_tx_hash: planBData.append_tx_hash || '0x0000000000000000000000000000000000000000000000000000000000000000',
+      append_pol_date_time: planBData.date_time || new Date().toISOString(),
+      pr_pol: planBData.pr_pol || 0,
+      pr_pol_tx_hash: planBData.pr_pol_tx_hash || '0x0000000000000000000000000000000000000000000000000000000000000000',
+      pr_pol_date_time: planBData.pr_pol_date_time || new Date().toISOString(),
+    });
+    return { ...planBData, id: Math.floor(Math.random() * 1000), d1: 1 };
   };
 
   // Add this helper function to validate Ethereum addresses
@@ -688,7 +719,7 @@ const confirmJoinPlanB = async () => {
 
         {error && (
           <div className="flex flex-col items-center justify-center p-5 border border-gray-800 rounded-lg text-[19px] text-center font-bold mt-10">
-            <p className="text-red-500">เกิดข้อผิดพลาด: {error}</p>
+            <p className="text-red-500">Error: {error}</p>
             {account?.address && (
               <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-800 rounded">
                 <p className="text-sm font-mono break-all">
