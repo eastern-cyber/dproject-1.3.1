@@ -770,8 +770,8 @@ const confirmJoinPlanB = async () => {
                 <p>Append POL: {formatNumber(planBData.append_pol)}</p>
                 <p>Rate: {formatNumber(planBData.rate_thb_pol)} THB/POL</p>
                 <p>วันที่เข้าร่วม: {formatDate(planBData.append_pol_date_time)}</p>
-                {planBData.append_tx_hash && (
-                  <p className="text-xs font-mono">Tx: {planBData.append_tx_hash.substring(0, 20)}...</p>
+                {planBData.append_pol_tx_hash && (
+                  <p className="text-xs font-mono">Tx: {planBData.append_pol_tx_hash.substring(0, 20)}...</p>
                 )}
               </div>
             )}
