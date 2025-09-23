@@ -1,6 +1,9 @@
 //src/app/referrer/confirm/page.tsx
 //separate two modals for each particular send POL transaction
 //Retry modal until each particular trasaction succeeded
+//src/app/referrer/confirm/page.tsx
+//separate two modals for each particular send POL transaction
+//Retry modal until each particular trasaction succeeded
 "use client";
 
 import { useTheme } from '@/context/ThemeContext';
@@ -186,8 +189,8 @@ const ConfirmPage = () => {
     return polAmount.toFixed(4);
   };
 
-  // IPFS Storage Function
-  const storeReportInIPFS = async (report: unknown) => {
+  // IPFS Storage Function with error handling
+  const storeReportInIPFS = async (report: unknown): Promise<string | null> => {
     try {
       const response = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
         method: 'POST',
@@ -203,13 +206,16 @@ const ConfirmPage = () => {
         })
       });
 
-      if (!response.ok) throw new Error('Failed to store report in IPFS');
+      if (!response.ok) {
+        console.warn('Failed to store report in IPFS, continuing without IPFS storage');
+        return null;
+      }
       
       const data = await response.json();
       return data.IpfsHash;
     } catch (error) {
-      console.error("Error storing report in IPFS:", error);
-      throw error;
+      console.warn("Error storing report in IPFS, continuing without IPFS storage:", error);
+      return null;
     }
   };
 
@@ -340,38 +346,48 @@ const ConfirmPage = () => {
         hour12: false
       }).replace(',', '');
 
-      // Store report in IPFS
-      const report = {
-        senderAddress: account.address,
-        dateTime: formattedDate,
-        timezone: "Asia/Bangkok (UTC+7)",
-        referrer: data.var1,
-        currentExchangeRate: exchangeRate,
-        adjustedExchangeRate: adjustedExchangeRate,
-        exchangeRateBuffer: EXCHANGE_RATE_BUFFER,
-        transactions: [
-          {
-            recipient: RECIPIENT_ADDRESS,
-            amountPOL: (Number(seventyPercentWei) / 10**18).toFixed(4),
-            amountTHB: (MEMBERSHIP_FEE_THB * 0.7).toFixed(2),
-            transactionHash: firstTxHash
-          },
-          {
-            recipient: data.var1,
-            amountPOL: (Number(thirtyPercentWei) / 10**18).toFixed(4),
-            amountTHB: (MEMBERSHIP_FEE_THB * 0.3).toFixed(2),
-            transactionHash: secondTransaction.transactionHash
-          }
-        ],
-        totalAmountPOL: totalPolAmount,
-        totalAmountTHB: MEMBERSHIP_FEE_THB
-      };
+      // Store report in IPFS (optional - will continue even if it fails)
+      let ipfsHash = null;
+      let ipfsLink = "N/A";
 
-      const ipfsHash = await storeReportInIPFS(report);
-      setIpfsHash(ipfsHash);
-      const ipfsLink = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+      try {
+        const report = {
+          senderAddress: account.address,
+          dateTime: formattedDate,
+          timezone: "Asia/Bangkok (UTC+7)",
+          referrer: data.var1,
+          currentExchangeRate: exchangeRate,
+          adjustedExchangeRate: adjustedExchangeRate,
+          exchangeRateBuffer: EXCHANGE_RATE_BUFFER,
+          transactions: [
+            {
+              recipient: RECIPIENT_ADDRESS,
+              amountPOL: (Number(seventyPercentWei) / 10**18).toFixed(4),
+              amountTHB: (MEMBERSHIP_FEE_THB * 0.7).toFixed(2),
+              transactionHash: firstTxHash
+            },
+            {
+              recipient: data.var1,
+              amountPOL: (Number(thirtyPercentWei) / 10**18).toFixed(4),
+              amountTHB: (MEMBERSHIP_FEE_THB * 0.3).toFixed(2),
+              transactionHash: secondTransaction.transactionHash
+            }
+          ],
+          totalAmountPOL: totalPolAmount,
+          totalAmountTHB: MEMBERSHIP_FEE_THB
+        };
 
-      // Add user to PostgreSQL database
+        ipfsHash = await storeReportInIPFS(report);
+        if (ipfsHash) {
+          ipfsLink = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+          setIpfsHash(ipfsHash);
+        }
+      } catch (ipfsError) {
+        console.warn("IPFS storage failed, but continuing with database update:", ipfsError);
+        // Continue with database update even if IPFS fails
+      }
+
+      // Add user to PostgreSQL database (this will happen even if IPFS fails)
       const newUser: DatabaseUserData = {
         user_id: account.address,
         referrer_id: data.var1,
@@ -396,7 +412,7 @@ const ConfirmPage = () => {
       router.push(`/users/${account.address}`);
 
     } catch (err) {
-      console.error("Second transaction failed:", err);
+      console.error("Second transaction or database update failed:", err);
       setTransactionError(`การทำรายการล้มเหลว: ${(err as Error).message}`);
     } finally {
       setIsProcessingSecond(false);
