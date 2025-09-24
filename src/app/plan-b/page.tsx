@@ -457,19 +457,19 @@ const confirmJoinPlanB = async () => {
 
   // Add this function to calculate the required POL amount
   const calculateRequiredPolAmount = () => {
-    if (!adjustedExchangeRate || !netBonus) return null;
-    
-    const requiredPolFor800THB = MEMBERSHIP_FEE_THB / adjustedExchangeRate;
-    const netBonusValue = Number(netBonus);
-    
-    // If net bonus covers the full amount, pay only minimum
-    if (netBonusValue >= requiredPolFor800THB) {
-      return MINIMUM_PAYMENT;
-    }
-    
-    // Otherwise, pay the difference
-    return requiredPolFor800THB - netBonusValue;
-  };
+  if (!adjustedExchangeRate) return null;
+  
+  const requiredPolFor800THB = MEMBERSHIP_FEE_THB / adjustedExchangeRate;
+  const netBonusValue = Number(netBonus) || 0; // Ensure it's a number, default to 0
+  
+  // If net bonus covers the full amount, pay only minimum
+  if (netBonusValue >= requiredPolFor800THB) {
+    return MINIMUM_PAYMENT;
+  }
+  
+  // Otherwise, pay the difference
+  return requiredPolFor800THB - netBonusValue;
+};
 
   // Add this function to execute POL transactions
   // Replace the executeTransaction function with this improved version
