@@ -105,7 +105,7 @@ export default function ReferrerDetails({ params }: { params: Promise<{ referrer
                     </p>
                     
                     {loading ? (
-                        <p className="text-gray-400 text-sm mt-2">กำลังโหลดข้อมูล...</p>
+                        <p className="text-red-600 text-[18px] mt-2">กำลังโหลดข้อมูล...</p>
                     ) : error ? (
                         <p className="text-red-400 text-sm mt-2">{error}</p>
                     ) : referrerData ? (
@@ -138,7 +138,7 @@ export default function ReferrerDetails({ params }: { params: Promise<{ referrer
                     <div className="flex flex-col items-center mb-6">
                         <button 
                             onClick={navigateToConfirmPage} 
-                            className="flex flex-col mt-1 border border-zinc-100 px-4 py-3 rounded-lg bg-red-700 hover:bg-zinc-800 transition-colors hover:border-zinc-400"
+                            className="flex flex-col mt-1 border border-zinc-100 px-4 py-3 rounded-lg bg-red-700 hover:bg-zinc-800 transition-colors hover:border-zinc-400 cursor-pointer"
                         >
                             ดำเนินการต่อ
                         </button>

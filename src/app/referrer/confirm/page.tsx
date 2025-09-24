@@ -441,7 +441,7 @@ const ConfirmPage = () => {
     if (loadingMembership) {
       return (
         <div className="flex justify-center py-4">
-          <p className="text-gray-400">กำลังตรวจสอบสถานะสมาชิก...</p>
+          <p className="text-red-600 text-[18px]">กำลังตรวจสอบสถานะสมาชิก...</p>
         </div>
       );
     }
@@ -464,7 +464,7 @@ const ConfirmPage = () => {
             </>
           )}
           {loading && !error && (
-            <span className="text-sm text-gray-400">กำลังโหลดอัตราแลกเปลี่ยน...</span>
+            <span className="text-sm text-gray-400 text-[18px]">กำลังโหลดอัตราแลกเปลี่ยน...</span>
           )}
           {error && (
             <span className="text-sm text-red-500">{error}</span>
@@ -590,7 +590,7 @@ const ConfirmPage = () => {
                     </div>
                     <div className="flex flex-col gap-3">
                       <button
-                        className={`px-6 py-3 rounded-lg font-medium ${
+                        className={`px-6 py-3 rounded-lg font-medium  text-[17px] ${
                           !account || parseFloat(polBalance) < parseFloat(calculatePolAmount() || "0") || isProcessingFirst
                             ? "bg-gray-600 cursor-not-allowed"
                             : "bg-red-600 hover:bg-red-700 cursor-pointer"
@@ -644,7 +644,7 @@ const ConfirmPage = () => {
                     </div>
                     <div className="flex flex-col gap-3">
                       <button
-                        className={`px-6 py-3 rounded-lg font-medium ${
+                        className={`px-6 py-3 rounded-lg font-medium text-[17px] ${
                           isProcessingSecond ? "bg-gray-600 cursor-not-allowed" : "bg-red-600 hover:bg-red-700 cursor-pointer"
                         }`}
                         onClick={handleSecondTransaction}
