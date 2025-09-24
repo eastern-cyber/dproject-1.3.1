@@ -464,7 +464,7 @@ const ConfirmPage = () => {
             </>
           )}
           {loading && !error && (
-            <span className="text-sm text-gray-400 text-[18px]">กำลังโหลดอัตราแลกเปลี่ยน...</span>
+            <span className="text-sm text-red-600 text-[18px]">กำลังโหลดอัตราแลกเปลี่ยน...</span>
           )}
           {error && (
             <span className="text-sm text-red-500">{error}</span>
