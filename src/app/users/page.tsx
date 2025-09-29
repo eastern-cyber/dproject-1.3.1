@@ -58,6 +58,7 @@ export default function AdminDashboard() {
   const [itemsPerPage] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -110,17 +111,97 @@ export default function AdminDashboard() {
     }
   };
 
-    // Handle retry
-    const handleRetry = () => {
-      fetchUsers();
-      fetchStats();
-    };
-    
-    // Add status filter state
-    const [statusFilter, _setStatusFilter] = useState('all');
+  // Handle retry
+  const handleRetry = () => {
+    fetchUsers();
+    fetchStats();
+  };
+  
+  // Add status filter state
+  const [statusFilter, _setStatusFilter] = useState('all');
 
-    // Update filteredUsers to include status filtering
-    // Make sure to actually use statusFilter in your filteredUsers logic
+  // Download CSV function
+  const downloadCSV = async () => {
+    try {
+      setDownloading(true);
+      
+      // If we already have all users, use them. Otherwise, fetch all users for download
+      let usersToDownload = users;
+      
+      // If we have filtered users (due to search), use all users from the database for complete export
+      if (searchTerm || statusFilter !== 'all') {
+        const response = await fetch('/api/users');
+        if (!response.ok) {
+          throw new Error('Failed to fetch users for export');
+        }
+        const data = await response.json();
+        usersToDownload = data.map((user: ApiUser) => ({
+          ...user,
+          plan_a: user.plan_a || null
+        }));
+      }
+      
+      // Define CSV headers
+      const headers = [
+        'ID',
+        'User ID',
+        'Token ID',
+        'Email',
+        'Name',
+        'Referrer ID',
+        'Plan A Date',
+        'Plan A POL',
+        'Plan A Rate (THB/POL)',
+        'Plan A TX Hash',
+        'Plan A Status',
+        'Created At',
+        'Updated At'
+      ];
+      
+      // Convert users to CSV rows
+      const csvRows = usersToDownload.map(user => [
+        user.id,
+        `"${user.user_id}"`, // Wrap in quotes to handle special characters
+        `"${user.token_id || ''}"`,
+        `"${user.email || ''}"`,
+        `"${user.name || ''}"`,
+        `"${user.referrer_id || ''}"`,
+        `"${user.plan_a?.dateTime || ''}"`,
+        user.plan_a?.POL || '',
+        user.plan_a?.rateTHBPOL || '',
+        `"${user.plan_a?.txHash || ''}"`,
+        `"${user.plan_a?.status || ''}"`,
+        `"${new Date(user.created_at).toLocaleString()}"`,
+        `"${new Date(user.updated_at).toLocaleString()}"`
+      ]);
+      
+      // Combine headers and rows
+      const csvContent = [
+        headers.join(','),
+        ...csvRows.map(row => row.join(','))
+      ].join('\n');
+      
+      // Create and download the file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `users_export_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+    } catch (error) {
+      console.error('Error downloading CSV:', error);
+      setError(error instanceof Error ? error.message : 'Failed to download CSV');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  // Update filteredUsers to include status filtering
+  // Make sure to actually use statusFilter in your filteredUsers logic
   const filteredUsers = useMemo(() => {
     if (!users || users.length === 0) return [];
     
@@ -190,43 +271,43 @@ export default function AdminDashboard() {
   };
 
   // Helper function to safely calculate total POL from plan_a
-const calculateTotalPOL = () => {
-  if (!users || users.length === 0) return '0.00';
-  
-  const total = users.reduce((sum, user) => {
-    let userPol = 0;
+  const calculateTotalPOL = () => {
+    if (!users || users.length === 0) return '0.00';
     
-    // Add POL from plan_a if it exists
-    if (user.plan_a && user.plan_a.POL) {
-      userPol += typeof user.plan_a.POL === 'string' ? parseFloat(user.plan_a.POL) : user.plan_a.POL;
-    }
+    const total = users.reduce((sum, user) => {
+      let userPol = 0;
+      
+      // Add POL from plan_a if it exists
+      if (user.plan_a && user.plan_a.POL) {
+        userPol += typeof user.plan_a.POL === 'string' ? parseFloat(user.plan_a.POL) : user.plan_a.POL;
+      }
+      
+      return sum + userPol;
+    }, 0);
     
-    return sum + userPol;
-  }, 0);
-  
-  return total.toFixed(2);
-};
+    return total.toFixed(2);
+  };
 
   // Helper function to safely calculate average rate from plan_a
-const calculateAverageRate = () => {
-  if (!users || users.length === 0) return '0.00';
-  
-  let totalRate = 0;
-  let rateCount = 0;
-  
-  users.forEach(user => {
-    // Add rate from plan_a if it exists
-    if (user.plan_a && user.plan_a.rateTHBPOL) {
-      const rate = typeof user.plan_a.rateTHBPOL === 'string' ? 
-        parseFloat(user.plan_a.rateTHBPOL) : user.plan_a.rateTHBPOL;
-      totalRate += rate;
-      rateCount++;
-    }
-  });
-  
-  if (rateCount === 0) return '0.00';
-  return (totalRate / rateCount).toFixed(2);
-};
+  const calculateAverageRate = () => {
+    if (!users || users.length === 0) return '0.00';
+    
+    let totalRate = 0;
+    let rateCount = 0;
+    
+    users.forEach(user => {
+      // Add rate from plan_a if it exists
+      if (user.plan_a && user.plan_a.rateTHBPOL) {
+        const rate = typeof user.plan_a.rateTHBPOL === 'string' ? 
+          parseFloat(user.plan_a.rateTHBPOL) : user.plan_a.rateTHBPOL;
+        totalRate += rate;
+        rateCount++;
+      }
+    });
+    
+    if (rateCount === 0) return '0.00';
+    return (totalRate / rateCount).toFixed(2);
+  };
 
   // Handle sort
   const handleSort = (field: SortField) => {
@@ -301,13 +382,38 @@ const calculateAverageRate = () => {
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600 dark:text-gray-300">Show:</span>
-            <span className="font-medium">{filteredUsers.length} users</span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600 dark:text-gray-300">Show:</span>
+              <span className="font-medium">{filteredUsers.length} users</span>
+            </div>
+            <button
+              onClick={downloadCSV}
+              disabled={downloading || users.length === 0}
+              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {downloading ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Downloading...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  </svg>
+                  Download CSV
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>
 
+      {/* Rest of the component remains the same */}
       {/* Users Table */}
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6">
         <h2 className="text-xl font-semibold mb-4">Users</h2>
