@@ -1,4 +1,4 @@
-// src/app/plan-b/page.tsx
+// src/app/d1/page.tsx
 
 "use client";
 import React, { useEffect, useState } from 'react'
@@ -15,7 +15,7 @@ import { useRouter } from 'next/navigation';
 import { PlanAConfirmModal } from '@/components/planAconfirmModal'; // Reuse the same modal component
 
 // Constants
-const RECIPIENT_ADDRESS = "0x65446A43C63033963c5dae4eE40fAff253d3c915";
+const RECIPIENT_ADDRESS = "0x3B16949e2fec02E1f9A2557cE7FEBe74f780fADc";
 const EXCHANGE_RATE_REFRESH_INTERVAL = 300000; // 5 minutes in ms
 const MEMBERSHIP_FEE_THB = 800;
 const EXCHANGE_RATE_BUFFER = 0.1; // 0.1 THB buffer to protect against fluctuations
