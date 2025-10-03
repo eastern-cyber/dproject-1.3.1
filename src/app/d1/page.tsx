@@ -527,7 +527,7 @@ export default function PlanB() {
 
         {userData && (
           <div className="flex flex-col items-center justify-center p-5 border border-gray-800 rounded-lg text-[19px] text-center mt-10">
-            <span className="m-2 text-[#eb1c24] text-[22px] font-bold">
+            <span className={`m-2 text-[22px] font-bold ${isPlanB ? "text-green-600" : "text-red-600"}`}>
               {isPlanB ? "ท่านเป็นสมาชิก Plan B เรียบร้อยแล้ว" : "ท่านยังไม่ได้เป็นสมาชิก Plan B"}
             </span>
             
