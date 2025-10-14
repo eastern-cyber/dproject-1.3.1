@@ -270,8 +270,8 @@ export default function AdminDashboard() {
     return isNaN(num) ? '0.00' : num.toFixed(2);
   };
 
-  // Helper function to safely calculate total POL from plan_a
-  const calculateTotalPOL = () => {
+  // MODIFIED: Calculate average POL per user instead of total POL
+  const calculateAveragePOL = () => {
     if (!users || users.length === 0) return '0.00';
     
     const total = users.reduce((sum, user) => {
@@ -285,7 +285,9 @@ export default function AdminDashboard() {
       return sum + userPol;
     }, 0);
     
-    return total.toFixed(2);
+    // Calculate average by dividing total by number of users
+    const average = total / users.length;
+    return average.toFixed(2);
   };
 
   // Helper function to safely calculate average rate from plan_a
@@ -350,26 +352,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-2">Total Users</h2>
-          <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{stats.total}</p>
-        </div>
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-2">Total POL</h2>
-          <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
-            {calculateTotalPOL()}
-          </p>
-        </div>
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-2">Avg Rate</h2>
-          <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-            {calculateAverageRate()}
-          </p>
-        </div>
-      </div>
-
+      {/* Rest of the component remains exactly the same */}
       {/* Search and Filter */}
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -413,7 +396,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Rest of the component remains the same */}
       {/* Users Table */}
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-6">
         <h2 className="text-xl font-semibold mb-4">Users</h2>
@@ -708,6 +690,28 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-2">Total Users</h2>
+          <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{stats.total}</p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+          {/* MODIFIED: Changed title from "Total POL" to "Average POL" */}
+          <h2 className="text-xl font-semibold mb-2">Average POL</h2>
+          <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
+            {/* MODIFIED: Using calculateAveragePOL instead of calculateTotalPOL */}
+            {calculateAveragePOL()}
+          </p>
+        </div>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-2">Avg Rate</h2>
+          <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+            {calculateAverageRate()}
+          </p>
+        </div>
+      </div>
 
       {/* Data Visualization */}
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
