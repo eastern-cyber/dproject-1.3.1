@@ -126,7 +126,12 @@ const ConfirmPage = () => {
         if (!response.ok) throw new Error("Failed to fetch exchange rate");
         
         const data = await response.json();
-        const currentRate = data["matic-network"].thb;
+        const currentRate = data["matic-network"]?.thb;
+        
+        if (!currentRate || currentRate <= 0) {
+          throw new Error("Invalid exchange rate received");
+        }
+        
         const adjustedRate = Math.max(0.01, currentRate - EXCHANGE_RATE_BUFFER);
         
         setExchangeRate(currentRate);
@@ -135,6 +140,8 @@ const ConfirmPage = () => {
       } catch (err) {
         setError("ไม่สามารถโหลดอัตราแลกเปลี่ยนได้");
         console.error("Error fetching exchange rate:", err);
+        // Set a fallback rate to prevent NaN
+        setAdjustedExchangeRate(6.02); // Fallback rate of 6.02 THB/POL
       } finally {
         setLoading(false);
       }
@@ -183,10 +190,36 @@ const ConfirmPage = () => {
     checkMembership();
   }, [account?.address]);
 
-  const calculatePolAmount = () => {
-    if (!adjustedExchangeRate) return null;
-    const polAmount = MEMBERSHIP_FEE_THB / adjustedExchangeRate;
-    return polAmount.toFixed(4);
+  const calculatePolAmount = (): string => {
+    if (!adjustedExchangeRate || adjustedExchangeRate <= 0) {
+      // Return a fallback calculation if rate is not available
+      const fallbackRate = 20; // 20 THB/POL as fallback
+      const polAmount = MEMBERSHIP_FEE_THB / fallbackRate;
+      return polAmount.toFixed(4);
+    }
+    
+    try {
+      const polAmount = MEMBERSHIP_FEE_THB / adjustedExchangeRate;
+      
+      // Check if the result is a valid number
+      if (isNaN(polAmount) || !isFinite(polAmount)) {
+        console.error("Invalid POL amount calculation, using fallback:", {
+          MEMBERSHIP_FEE_THB,
+          adjustedExchangeRate,
+          result: polAmount
+        });
+        // Fallback calculation
+        const fallbackRate = 20;
+        return (MEMBERSHIP_FEE_THB / fallbackRate).toFixed(4);
+      }
+      
+      return polAmount.toFixed(4);
+    } catch (error) {
+      console.error("Error calculating POL amount, using fallback:", error);
+      // Fallback calculation
+      const fallbackRate = 20;
+      return (MEMBERSHIP_FEE_THB / fallbackRate).toFixed(4);
+    }
   };
 
   // IPFS Storage Function with error handling
@@ -276,16 +309,20 @@ const ConfirmPage = () => {
   };
 
   const handleFirstTransaction = async () => {
-    if (!account || !adjustedExchangeRate || !data?.var1) return;
+    if (!account || !data?.var1) return;
     
     setIsProcessingFirst(true);
     setTransactionError(null);
 
     try {
       const totalPolAmount = calculatePolAmount();
-      if (!totalPolAmount) throw new Error("Unable to calculate POL amount");
-
+      
+      // Convert to wei safely
       const totalAmountWei = toWei(totalPolAmount);
+      if (!totalAmountWei || totalAmountWei <= 0) {
+        throw new Error("Invalid POL amount calculated");
+      }
+
       const seventyPercentWei = BigInt(Math.floor(Number(totalAmountWei) * 0.7));
 
       // Execute first transaction (70% to fixed recipient)
@@ -446,22 +483,25 @@ const ConfirmPage = () => {
       );
     }
 
+    const polAmount = calculatePolAmount();
+
     return (
       <div className="flex flex-col gap-4 md:gap-8">
         <p className="mt-4 text-center text-[18px] text-gray-200">
-          <b>ค่าสมาชิก: <p className="text-yellow-500 text-[22px]">{MEMBERSHIP_FEE_THB} THB
-          {adjustedExchangeRate && (
-            <>
-                &nbsp; ( ≈ {calculatePolAmount()} POL )
-            </>
-          )}
-          </p></b>
-          {exchangeRate && adjustedExchangeRate && (
+          <b>ค่าสมาชิก: </b>
+          <p className="text-yellow-500 text-[22px]">
+            {MEMBERSHIP_FEE_THB} THB ( ≈ {polAmount} POL )
+          </p>
+          {exchangeRate && adjustedExchangeRate ? (
             <>
               <span className="text-[17px] text-green-400">
                 อัตราแลกเปลี่ยน: {adjustedExchangeRate.toFixed(2)} THB/POL
               </span><br />
             </>
+          ) : (
+            <span className="text-[17px] text-yellow-400">
+              ใช้อัตราแลกเปลี่ยนประมาณการ: 6.02 THB/POL
+            </span>
           )}
           {loading && !error && (
             <span className="text-sm text-red-600 text-[18px]">กำลังโหลดอัตราแลกเปลี่ยน...</span>
@@ -481,12 +521,12 @@ const ConfirmPage = () => {
           ) : (
             <button
               className={`flex flex-col mt-1 border border-zinc-100 px-4 py-3 rounded-lg transition-colors ${
-                !account || !adjustedExchangeRate || isProcessingFirst || isProcessingSecond
+                !account || isProcessingFirst || isProcessingSecond
                   ? "bg-gray-600 cursor-not-allowed"
                   : "bg-red-700 hover:bg-red-800 hover:border-zinc-400 cursor-pointer"
               }`}
               onClick={() => setShowFirstConfirmationModal(true)}
-              disabled={!account || !adjustedExchangeRate || isProcessingFirst || isProcessingSecond}
+              disabled={!account || isProcessingFirst || isProcessingSecond}
             >
               <span className="text-[18px]">
                 {!account ? "กรุณาเชื่อมต่อกระเป๋า" : "ดำเนินการต่อ"}
@@ -567,9 +607,13 @@ const ConfirmPage = () => {
                         </span>
                         <p className="text-[16px] mt-2 text-gray-200">ไปยังระบบ</p>
                       </p>
-                      {exchangeRate && adjustedExchangeRate && (
+                      {exchangeRate && adjustedExchangeRate ? (
                         <div className="mt-3 text-sm text-gray-300">
                           <p>อัตราแลกเปลี่ยน: {adjustedExchangeRate.toFixed(4)} THB/POL</p>
+                        </div>
+                      ) : (
+                        <div className="mt-3 text-sm text-yellow-300">
+                          <p>ใช้อัตราแลกเปลี่ยนประมาณการ: 20 THB/POL</p>
                         </div>
                       )}
                       {account && (
@@ -577,7 +621,7 @@ const ConfirmPage = () => {
                           POL ในกระเป๋าของคุณ: <span className="text-green-400">{polBalance}</span>
                         </p>
                       )}
-                      {account && parseFloat(polBalance) < parseFloat(calculatePolAmount() || "0") && (
+                      {account && parseFloat(polBalance) < (Number(calculatePolAmount()) * 0.7) && (
                         <p className="mt-2 text-red-400 text-sm">
                           ⚠️ จำนวน POL ในกระเป๋าของคุณไม่เพียงพอ
                         </p>
@@ -591,12 +635,12 @@ const ConfirmPage = () => {
                     <div className="flex flex-col gap-3">
                       <button
                         className={`px-6 py-3 rounded-lg font-medium  text-[17px] ${
-                          !account || parseFloat(polBalance) < parseFloat(calculatePolAmount() || "0") || isProcessingFirst
+                          !account || parseFloat(polBalance) < (Number(calculatePolAmount()) * 0.7) || isProcessingFirst
                             ? "bg-gray-600 cursor-not-allowed"
                             : "bg-red-600 hover:bg-red-700 cursor-pointer"
                         }`}
                         onClick={handleFirstTransaction}
-                        disabled={!account || isProcessingFirst || parseFloat(polBalance) < parseFloat(calculatePolAmount() || "0")}
+                        disabled={!account || isProcessingFirst || parseFloat(polBalance) < (Number(calculatePolAmount()) * 0.7)}
                       >
                         {isProcessingFirst ? 'กำลังดำเนินการ...' : 'ยืนยันการโอนครั้งที่ 1'}
                       </button>
