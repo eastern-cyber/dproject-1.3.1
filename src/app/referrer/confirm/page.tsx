@@ -22,7 +22,7 @@ const RECIPIENT_ADDRESS = "0x3BBf139420A8Ecc2D06c64049fE6E7aE09593944";
 const EXCHANGE_RATE_REFRESH_INTERVAL = 300000; // 5 minutes in ms
 const MEMBERSHIP_FEE_THB = 400;
 const EXCHANGE_RATE_BUFFER = 0.1; // 0.1 THB buffer to protect against fluctuations
-const FALLBACK_EXCHANGE_RATE = 6.18; // Fallback rate if all APIs fail
+const FALLBACK_EXCHANGE_RATE = 6.58; // Fallback rate if all APIs fail
 
 type UserData = {
   var1: string;
