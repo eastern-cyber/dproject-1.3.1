@@ -572,7 +572,7 @@ export default function AvatarPlanA() {
         </Link>
 
         <h1 className="p-4 text-1xl md:text-3xl text-2xl font-semibold md:font-bold tracking-tighter">
-          ยืนยันการเข้าร่วม Avatar Plan A
+          ยืนยันการสร้าง Avatar Plan A
         </h1>
         
         <div className="flex justify-center mb-2">
@@ -594,7 +594,7 @@ export default function AvatarPlanA() {
         {userData && (
           <div className="flex flex-col items-center justify-center p-5 border border-gray-800 rounded-lg text-[19px] text-center mt-10">
             <span className={`m-2 text-[22px] font-bold ${isA1Member ? "text-green-600" : "text-red-600"}`}>
-              {isA1Member ? "ท่านเป็นสมาชิก Avatar Plan A เรียบร้อยแล้ว" : "ท่านยังไม่ได้เป็นสมาชิก Avatar Plan A"}
+              {isA1Member ? "ท่านมี Avatar Plan A แล้ว" : "ท่านยังไม่มี Avatar Plan A"}
             </span>
             
             <div className="flex flex-col m-2 text-gray-200 text-[16px] text-left">
@@ -613,7 +613,7 @@ export default function AvatarPlanA() {
                   className="w-full py-3 px-6 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors"
                   disabled={!account}
                 >
-                  {!account ? "กรุณาเชื่อมต่อกระเป๋า" : "ยืนยันเข้าร่วม Avatar Plan A"}
+                  {!account ? "กรุณาเชื่อมต่อกระเป๋า" : "ยืนยันการสร้าง Avatar Plan A"}
                 </button>
               </div>
             )}
@@ -636,10 +636,10 @@ export default function AvatarPlanA() {
           disableClose={isProcessingFirst || transactionStatus.firstTransaction}
         >
           <div className="p-6 bg-gray-900 rounded-lg border border-gray-700 max-w-md">
-            <h3 className="text-xl font-bold mb-4 text-center">ยืนยันการเข้าร่วม Avatar Plan A</h3>
+            <h3 className="text-xl font-bold mb-4 text-center">ยืนยันการสร้าง Avatar Plan A</h3>
             <div className="mb-6 text-center">
               <p className="text-[18px] text-gray-200">
-                ค่าสมาชิก Avatar Plan A<br />
+                ค่าดำเนินการ Avatar Plan A<br />
                 <span className="text-yellow-500 text-[22px] font-bold">
                   {MEMBERSHIP_FEE_THB} THB
                 </span>
