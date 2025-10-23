@@ -1,4 +1,4 @@
-// src/app/d1/page.tsx
+// src/app/a1/page.tsx
 
 "use client";
 import React, { useEffect, useState } from 'react'
@@ -12,12 +12,12 @@ import { defineChain, getContract, toWei, sendTransaction, readContract, prepare
 import { polygon } from "thirdweb/chains";
 import { client } from "@/lib/client";
 import { useRouter } from 'next/navigation';
-import { ConfirmModal } from '@/components/confirmModal'; // Reuse the same modal component
+import { ConfirmModal } from '@/components/confirmModal';
 
 // Constants
-const RECIPIENT_ADDRESS = "0x3B16949e2fec02E1f9A2557cE7FEBe74f780fADc";
+const RECIPIENT_ADDRESS = "0x984395c00E5451437ed47346e6911c2F5CC31ad3";
 const EXCHANGE_RATE_REFRESH_INTERVAL = 300000; // 5 minutes in ms
-const MEMBERSHIP_FEE_THB = 800;
+const MEMBERSHIP_FEE_THB = 400;
 const EXCHANGE_RATE_BUFFER = 0.1; // 0.1 THB buffer to protect against fluctuations
 const MINIMUM_PAYMENT = 0.01; // Minimum POL to pay for transaction
 const FALLBACK_EXCHANGE_RATE = 6.22; // Fallback rate if all APIs fail
@@ -54,8 +54,9 @@ interface UserData {
   updated_at: string;
 }
 
-interface D1Data {
+interface A1Data {
   id: number;
+  a1_id: string;
   user_id: string;
   rate_thb_pol: number;
   append_pol: number;
@@ -86,25 +87,25 @@ type TransactionStatus = {
   error?: string;
 };
 
-export default function PlanB() {
+export default function AvatarPlanA() {
   const account = useActiveAccount();
   const router = useRouter();
   
-  // State variables - Following Plan A pattern
+  // State variables
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [d1Data, setD1Data] = useState<D1Data | null>(null);
+  const [a1Data, setA1Data] = useState<A1Data | null>(null);
   const [bonusData, setBonusData] = useState<BonusData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Transaction states - Following Plan A pattern
+  // Transaction states
   const [isTransactionComplete, setIsTransactionComplete] = useState(false);
   const [transactionStatus, setTransactionStatus] = useState<TransactionStatus>({
     firstTransaction: false,
     secondTransaction: false
   });
   
-  // Modal states - Following Plan A pattern
+  // Modal states
   const [showFirstConfirmationModal, setShowFirstConfirmationModal] = useState(false);
   const [showSecondConfirmationModal, setShowSecondConfirmationModal] = useState(false);
   const [isProcessingFirst, setIsProcessingFirst] = useState(false);
@@ -119,7 +120,7 @@ export default function PlanB() {
   const [rateLoading, setRateLoading] = useState(true);
   const [transactionError, setTransactionError] = useState<string | null>(null);
 
-  // Fetch exchange rate with multiple fallback APIs - Same as Plan A
+  // Fetch exchange rate with multiple fallback APIs
   const fetchExchangeRate = async (): Promise<number> => {
     const errors = [];
     
@@ -150,11 +151,10 @@ export default function PlanB() {
         const errorMsg = `${api.name} failed: ${err instanceof Error ? err.message : 'Unknown error'}`;
         console.warn(errorMsg);
         errors.push(errorMsg);
-        continue; // Try next API
+        continue;
       }
     }
 
-    // If all APIs fail, use fallback rate
     console.warn('All exchange rate APIs failed, using fallback rate:', FALLBACK_EXCHANGE_RATE);
     console.warn('Errors:', errors);
     return FALLBACK_EXCHANGE_RATE;
@@ -187,15 +187,15 @@ export default function PlanB() {
         const userData = await userResponse.json();
         setUserData(userData);
 
-        // Fetch D1 data
+        // Fetch A1 data
         try {
-          const d1Response = await fetch(`/api/d1?user_id=${account.address}`);
-          if (d1Response.ok) {
-            const d1Data = await d1Response.json();
-            setD1Data(d1Data);
+          const a1Response = await fetch(`/api/a1?user_id=${account.address}`);
+          if (a1Response.ok) {
+            const a1Data = await a1Response.json();
+            setA1Data(a1Data);
           }
-        } catch (d1Error) {
-          console.log('No D1 data found or error fetching:', d1Error);
+        } catch (a1Error) {
+          console.log('No A1 data found or error fetching:', a1Error);
         }
 
       } catch (err) {
@@ -210,7 +210,7 @@ export default function PlanB() {
     fetchUserData();
   }, [account?.address]);
 
-  // Fetch THB to POL exchange rate and calculate adjusted rate - Updated to use new method
+  // Fetch THB to POL exchange rate and calculate adjusted rate
   useEffect(() => {
     const updateExchangeRate = async () => {
       try {
@@ -222,13 +222,11 @@ export default function PlanB() {
         setAdjustedExchangeRate(adjustedRate);
         setError(null);
         
-        // Show warning if using fallback rate
         if (currentRate === FALLBACK_EXCHANGE_RATE) {
           setError("ใช้อัตราแลกเปลี่ยนสำรอง เนื่องจากไม่สามารถโหลดอัตราปัจจุบันได้");
         }
       } catch (err) {
         console.error("All exchange rate APIs failed:", err);
-        // Use fallback rate even if there's an error
         const fallbackAdjustedRate = Math.max(0.01, FALLBACK_EXCHANGE_RATE - EXCHANGE_RATE_BUFFER);
         setExchangeRate(FALLBACK_EXCHANGE_RATE);
         setAdjustedExchangeRate(fallbackAdjustedRate);
@@ -243,7 +241,7 @@ export default function PlanB() {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch POL balance - Following Plan A pattern
+  // Fetch POL balance
   useEffect(() => {
     const fetchBalance = async () => {
       if (!account) {
@@ -285,22 +283,21 @@ export default function PlanB() {
   const calculateRequiredPolAmount = () => {
     if (!adjustedExchangeRate) return null;
     
-    const requiredPolFor800THB = MEMBERSHIP_FEE_THB / adjustedExchangeRate;
-    const netBonusValue = totalBonus * 0.05;
+    const requiredPolFor400THB = MEMBERSHIP_FEE_THB / adjustedExchangeRate;
+    const netBonusValue = totalBonus * 0.1;
     
     // If net bonus covers the full amount, pay only minimum
-    if (netBonusValue >= requiredPolFor800THB) {
+    if (netBonusValue >= requiredPolFor400THB) {
       return MINIMUM_PAYMENT;
     }
     
     // Otherwise, pay the difference
-    return requiredPolFor800THB - netBonusValue;
+    return requiredPolFor400THB - netBonusValue;
   };
 
-  // Transaction execution - Following Plan A pattern with better error handling
+  // Transaction execution
   const executeTransaction = async (to: string, amountWei: bigint) => {
     try {
-      // Validate recipient address
       if (!isValidEthereumAddress(to)) {
         return { 
           success: false, 
@@ -337,22 +334,22 @@ export default function PlanB() {
     }
   };
 
-  // Database operation - Following Plan A pattern
-  const addD1ToDatabase = async (d1Data: any) => {
+  // Database operation
+  const addA1ToDatabase = async (a1Data: any) => {
     try {
-      console.log('Sending to D1 API:', d1Data);
+      console.log('Sending to A1 API:', a1Data);
 
-      const response = await fetch('/api/d1', {
+      const response = await fetch('/api/a1', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(d1Data),
+        body: JSON.stringify(a1Data),
       });
 
       const responseText = await response.text();
-      console.log('D1 API response status:', response.status);
-      console.log('D1 API response text:', responseText);
+      console.log('A1 API response status:', response.status);
+      console.log('A1 API response text:', responseText);
 
       if (!response.ok) {
         let errorData;
@@ -366,12 +363,12 @@ export default function PlanB() {
 
       return JSON.parse(responseText);
     } catch (error) {
-      console.error('Error adding D1 to database:', error);
+      console.error('Error adding A1 to database:', error);
       throw error;
     }
   };
 
-  // Main transaction handlers - Following Plan A pattern
+  // Main transaction handlers
   const handleFirstTransaction = async () => {
     if (!account || !adjustedExchangeRate || !userData) return;
     
@@ -434,15 +431,19 @@ export default function PlanB() {
       const now = new Date();
       const formattedDate = now.toISOString();
 
-      // Prepare D1 data
-      const newD1Data = {
+      // Generate A1 ID (you can customize this logic)
+      const a1Id = `A1-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      // Prepare A1 data
+      const newA1Data = {
+        a1_id: a1Id,
         user_id: account.address,
         rate_thb_pol: parseFloat(adjustedExchangeRate.toFixed(4)),
         append_pol: parseFloat(calculateRequiredPolAmount()?.toFixed(4) || "0"),
         append_pol_tx_hash: firstTxHash,
         append_pol_date_time: formattedDate,
         remark: {
-          net_bonus_used: totalBonus * 0.05,
+          net_bonus_used: totalBonus * 0.1,
           referrer_transaction: referrerAddress ? {
             amount: MINIMUM_PAYMENT,
             tx_hash: secondTransactionHash,
@@ -454,16 +455,16 @@ export default function PlanB() {
       };
 
       // Save to database
-      console.log('Adding D1 data to database...');
-      const dbResult = await addD1ToDatabase(newD1Data);
+      console.log('Adding A1 data to database...');
+      const dbResult = await addA1ToDatabase(newA1Data);
       
       if (dbResult && dbResult.user_id) {
-        setD1Data(dbResult);
+        setA1Data(dbResult);
         setIsTransactionComplete(true);
         setShowSecondConfirmationModal(false);
         
         // Redirect to user page after successful completion
-        router.push(`/plan-b/${account.address}`);
+        router.push(`/a1/${account.address}`);
       } else {
         throw new Error('Failed to save to database');
       }
@@ -476,10 +477,10 @@ export default function PlanB() {
     }
   };
 
-  // Modal handlers - Following Plan A pattern
+  // Modal handlers
   const handleCloseFirstModal = () => {
     if (transactionStatus.firstTransaction) {
-      return; // Don't allow closing if transaction is completed
+      return;
     }
     setShowFirstConfirmationModal(false);
     setTransactionError(null);
@@ -487,7 +488,7 @@ export default function PlanB() {
 
   const handleCloseSecondModal = () => {
     if (transactionStatus.secondTransaction) {
-      return; // Don't allow closing if transaction is completed
+      return;
     }
     setShowSecondConfirmationModal(false);
     setTransactionError(null);
@@ -517,7 +518,7 @@ export default function PlanB() {
     }
   };
 
-  const handleJoinPlanB = () => {
+  const handleJoinA1 = () => {
     setShowFirstConfirmationModal(true);
     fetchBonusData();
   };
@@ -548,7 +549,7 @@ export default function PlanB() {
 
   // Calculations
   const isPlanA = userData?.plan_a !== null;
-  const isPlanB = d1Data !== null;
+  const isA1Member = a1Data !== null;
   const totalBonus = bonusData.reduce((total, bonus) => total + 
     (Number(bonus.pr_a) || 0) + 
     (Number(bonus.pr_b) || 0) + 
@@ -556,7 +557,7 @@ export default function PlanB() {
     (Number(bonus.rt) || 0) + 
     (Number(bonus.ar) || 0), 0);
 
-  const netBonus = totalBonus * 0.05;
+  const netBonus = totalBonus * 0.1;
 
   return (
     <main className="p-4 pb-10 min-h-[100vh] flex flex-col items-center">
@@ -571,7 +572,7 @@ export default function PlanB() {
         </Link>
 
         <h1 className="p-4 text-1xl md:text-3xl text-2xl font-semibold md:font-bold tracking-tighter">
-          ยืนยันการเข้าร่วม Plan B D1
+          ยืนยันการเข้าร่วม Avatar Plan A
         </h1>
         
         <div className="flex justify-center mb-2">
@@ -592,8 +593,8 @@ export default function PlanB() {
 
         {userData && (
           <div className="flex flex-col items-center justify-center p-5 border border-gray-800 rounded-lg text-[19px] text-center mt-10">
-            <span className={`m-2 text-[22px] font-bold ${isPlanB ? "text-green-600" : "text-red-600"}`}>
-              {isPlanB ? "ท่านเป็นสมาชิก Plan B D1 เรียบร้อยแล้ว" : "ท่านยังไม่ได้เป็นสมาชิก Plan B D1"}
+            <span className={`m-2 text-[22px] font-bold ${isA1Member ? "text-green-600" : "text-red-600"}`}>
+              {isA1Member ? "ท่านเป็นสมาชิก Avatar Plan A เรียบร้อยแล้ว" : "ท่านยังไม่ได้เป็นสมาชิก Avatar Plan A"}
             </span>
             
             <div className="flex flex-col m-2 text-gray-200 text-[16px] text-left">
@@ -605,14 +606,14 @@ export default function PlanB() {
               PR by: {formatAddressForDisplay(userData.referrer_id)}<br />
             </div>
 
-            {!isPlanB && userData && (
+            {!isA1Member && userData && (
               <div className="w-full mt-6">
                 <button
-                  onClick={handleJoinPlanB}
+                  onClick={handleJoinA1}
                   className="w-full py-3 px-6 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors"
                   disabled={!account}
                 >
-                  {!account ? "กรุณาเชื่อมต่อกระเป๋า" : "ยืนยันเข้าร่วม Plan B D1"}
+                  {!account ? "กรุณาเชื่อมต่อกระเป๋า" : "ยืนยันเข้าร่วม Avatar Plan A"}
                 </button>
               </div>
             )}
@@ -628,17 +629,17 @@ export default function PlanB() {
         <WalletPublicKey walletAddress={account?.address || ""}/>
       </div>
 
-      {/* First Confirmation Modal - Following Plan A pattern */}
+      {/* First Confirmation Modal */}
       {showFirstConfirmationModal && (
         <ConfirmModal 
           onClose={handleCloseFirstModal}
           disableClose={isProcessingFirst || transactionStatus.firstTransaction}
         >
           <div className="p-6 bg-gray-900 rounded-lg border border-gray-700 max-w-md">
-            <h3 className="text-xl font-bold mb-4 text-center">ยืนยันการเข้าร่วม Plan B D1</h3>
+            <h3 className="text-xl font-bold mb-4 text-center">ยืนยันการเข้าร่วม Avatar Plan A</h3>
             <div className="mb-6 text-center">
               <p className="text-[18px] text-gray-200">
-                ค่าสมาชิก Plan B D1<br />
+                ค่าสมาชิก Avatar Plan A<br />
                 <span className="text-yellow-500 text-[22px] font-bold">
                   {MEMBERSHIP_FEE_THB} THB
                 </span>
@@ -657,7 +658,7 @@ export default function PlanB() {
                   {formatNumber(netBonus)} POL
                 </p>
                 <p className="text-sm text-gray-500">
-                  (5% ของโบนัสทั้งหมด: {formatNumber(totalBonus)} POL)
+                  (10% ของโบนัสทั้งหมด: {formatNumber(totalBonus)} POL)
                 </p>
               </div>
 
@@ -772,7 +773,7 @@ export default function PlanB() {
   )
 }
 
-// WalletPublicKey component (keep as is)
+// WalletPublicKey component
 const WalletPublicKey: React.FC<{ walletAddress?: string }> = ({ walletAddress }) => {
   const handleCopy = () => {
     const link = `https://dfi.fund/referrer/${walletAddress}`;
