@@ -177,14 +177,14 @@ export default function UserDetails({ params }: { params: Promise<{ userId: stri
                 </div>
                 <div className="flex flex-col items-center justify-center p-2 m-2">
                     <p className="flex flex-col items-center justify-center text-[18px] text-gray-200 m-2 text-center">
-                        <b>ขอแสดงความยินดี การยืนยัน Plan B D1 ของท่าน เสร็จสมบูรณ์แล้ว</b>
+                        <b>ขอแสดงความยินดี การสร้าง Avatar Plan A ของท่าน เสร็จสมบูรณ์แล้ว</b>
                     </p>
                     
                     
                     {/* Display current user's wallet address and information */}
                     <div className="mt-6 p-4 border border-gray-600 bg-gray-800 rounded-lg w-full">
                         <p className="text-[16px] text-center text-gray-300 mb-4">
-                            <b>ข้อมูลสมาชิก Plan B D1</b>
+                            <b>ข้อมูลสมาชิก</b>
                         </p>
                         
                         <div className="space-y-3">

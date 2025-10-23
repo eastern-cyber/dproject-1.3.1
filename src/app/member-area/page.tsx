@@ -259,8 +259,13 @@ const WalletBalances: React.FC<walletAddresssProps> = ({ walletAddress }) => {
                         </Link>
                         <Link 
                             className="mb-8 border border-zinc-500 px-4 py-3 rounded-lg hover:bg-[#680000] hover:text-yellow-200 hover:border-yellow-300"
+                            href="/a1">
+                            <p className="text-center text-[19px]">สร้าง Avatar A1</p>
+                        </Link>
+                        <Link 
+                            className="mb-8 border border-zinc-500 px-4 py-3 rounded-lg hover:bg-[#680000] hover:text-yellow-200 hover:border-yellow-300"
                             href="/d1">
-                            <p className="text-center text-[19px]">เข้าร่วม Plan B</p>
+                            <p className="text-center text-[19px]">เข้าร่วม Plan B D1</p>
                         </Link>
                         <Link 
                             className="border border-zinc-500 px-4 py-3 rounded-lg hover:bg-[#680000] hover:text-yellow-200 hover:border-yellow-300"
