@@ -14,8 +14,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
+    // Remove .toLowerCase() to preserve case
     const result = await sql`
-      SELECT * FROM d1 WHERE user_id = ${user_id.toLowerCase()} LIMIT 1
+      SELECT * FROM d1 WHERE user_id = ${user_id} LIMIT 1
     `;
 
     if (result.length === 0) {
@@ -38,12 +39,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    const normalizedUserId = body.user_id.toLowerCase();
+    // Remove .toLowerCase() to preserve original case
+    const userId = body.user_id;
     const now = new Date().toISOString();
 
     // Check if record exists
     const existingRecord = await sql`
-      SELECT id FROM d1 WHERE user_id = ${normalizedUserId} LIMIT 1
+      SELECT id FROM d1 WHERE user_id = ${userId} LIMIT 1
     `;
 
     let result;
@@ -58,7 +60,7 @@ export async function POST(request: NextRequest) {
           append_pol_date_time = ${body.append_pol_date_time || null},
           remark = ${body.remark ? JSON.stringify(body.remark) : null},
           updated_at = ${now}
-        WHERE user_id = ${normalizedUserId}
+        WHERE user_id = ${userId}
         RETURNING *
       `;
     } else {
@@ -74,7 +76,7 @@ export async function POST(request: NextRequest) {
           created_at,
           updated_at
         ) VALUES (
-          ${normalizedUserId},
+          ${userId},
           ${body.rate_thb_pol || 0},
           ${body.append_pol || 0},
           ${body.append_pol_tx_hash || null},
