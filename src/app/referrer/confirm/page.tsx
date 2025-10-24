@@ -14,7 +14,7 @@ import { defineChain, getContract } from "thirdweb";
 import { polygon } from "thirdweb/chains";
 import Footer from "@/components/Footer";
 import { prepareContractCall, toWei, sendTransaction, readContract } from "thirdweb";
-import { PlanAConfirmModal } from "@/components/planAconfirmModal";
+import { ConfirmModal } from "@/components/confirmModal";
 import { useRouter } from "next/navigation";
 
 // Constants
@@ -614,7 +614,7 @@ const ConfirmPage = () => {
               
               {/* First Confirmation Modal - Cannot be closed if transaction is in progress or completed */}
               {showFirstConfirmationModal && (
-                <PlanAConfirmModal 
+                <ConfirmModal 
                   onClose={handleCloseFirstModal}
                   disableClose={isProcessingFirst || transactionStatus.firstTransaction}
                 >
@@ -672,12 +672,12 @@ const ConfirmPage = () => {
                       </button>
                     </div>
                   </div>
-                </PlanAConfirmModal>
+                </ConfirmModal>
               )}
 
               {/* Second Confirmation Modal - Cannot be closed if transaction is in progress or completed */}
               {showSecondConfirmationModal && (
-                <PlanAConfirmModal 
+                <ConfirmModal 
                   onClose={handleCloseSecondModal}
                   disableClose={isProcessingSecond || transactionStatus.secondTransaction}
                 >
@@ -724,7 +724,7 @@ const ConfirmPage = () => {
                       </button>
                     </div>
                   </div>
-                </PlanAConfirmModal>
+                </ConfirmModal>
               )}
             </div>
             <div className="w-full text-center text-gray-200 flex flex-col items-center justify-center p-3 m-2 border border-gray-800 rounded-lg break-all">
