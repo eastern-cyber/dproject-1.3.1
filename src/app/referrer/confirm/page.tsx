@@ -1,6 +1,7 @@
-//src/app/referrer/confirm/page.tsx
-//separate two modals for each particular send POL transaction
-//Retry modal until each particular trasaction succeeded
+// src/app/referrer/confirm/page.tsx
+// separate two modals for each particular send POL transaction
+// Retry modal until each particular trasaction succeeded
+// src/app/referrer/confirm/page.tsx
 "use client";
 
 import { useTheme } from '@/context/ThemeContext';
@@ -16,13 +17,20 @@ import Footer from "@/components/Footer";
 import { prepareContractCall, toWei, sendTransaction, readContract } from "thirdweb";
 import { ConfirmModal } from "@/components/confirmModal";
 import { useRouter } from "next/navigation";
+import { privateKeyToAccount } from "thirdweb/wallets";
 
 // Constants
 const RECIPIENT_ADDRESS = "0x3BBf139420A8Ecc2D06c64049fE6E7aE09593944";
+const KTDFI_SENDER_ADDRESS = "0x984395c00E5451437ed47346e6911c2F5CC31ad3";
+const KTDFI_CONTRACT_ADDRESS = "0x532313164FDCA3ACd2C2900455B208145f269f0e";
+const KTDFI_AMOUNT = "1000"; // 1,000 KTDFI tokens
 const EXCHANGE_RATE_REFRESH_INTERVAL = 300000; // 5 minutes in ms
 const MEMBERSHIP_FEE_THB = 400;
 const EXCHANGE_RATE_BUFFER = 0.1; // 0.1 THB buffer to protect against fluctuations
 const FALLBACK_EXCHANGE_RATE = 6.45; // Fallback rate if all APIs fail
+
+// KTDFI Sender Private Key (should be in environment variables)
+const KTDFI_SENDER_PRIVATE_KEY = process.env.NEXT_PUBLIC_KTDFI_SENDER_PRIVATE_KEY;
 
 type UserData = {
   var1: string;
@@ -34,6 +42,7 @@ type UserData = {
 type TransactionStatus = {
   firstTransaction: boolean;
   secondTransaction: boolean;
+  thirdTransaction: boolean;
   error?: string;
 };
 
@@ -45,6 +54,7 @@ type PlanAData = {
   thirtyPOL: string;
   seventyTxHash: string;
   thirtyTxHash: string;
+  ktdfiTxHash: string;
   linkIPFS: string;
 };
 
@@ -78,7 +88,8 @@ const ConfirmPage = () => {
   const [isTransactionComplete, setIsTransactionComplete] = useState(false);
   const [transactionStatus, setTransactionStatus] = useState<TransactionStatus>({
     firstTransaction: false,
-    secondTransaction: false
+    secondTransaction: false,
+    thirdTransaction: false
   });
   const [ipfsHash, setIpfsHash] = useState<string | null>(null);
   const [data, setData] = useState<UserData | null>(null);
@@ -88,55 +99,44 @@ const ConfirmPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [showFirstConfirmationModal, setShowFirstConfirmationModal] = useState(false);
   const [showSecondConfirmationModal, setShowSecondConfirmationModal] = useState(false);
+  const [showThirdConfirmationModal, setShowThirdConfirmationModal] = useState(false);
   const [isProcessingFirst, setIsProcessingFirst] = useState(false);
   const [isProcessingSecond, setIsProcessingSecond] = useState(false);
+  const [isProcessingThird, setIsProcessingThird] = useState(false);
   const [firstTxHash, setFirstTxHash] = useState<string>("");
+  const [secondTxHash, setSecondTxHash] = useState<string>("");
+  const [thirdTxHash, setThirdTxHash] = useState<string>("");
   const [polBalance, setPolBalance] = useState<string>("0");
   const [isMember, setIsMember] = useState(false);
   const [loadingMembership, setLoadingMembership] = useState(false);
   const [transactionError, setTransactionError] = useState<string | null>(null);
+  const [ktdfiSenderAccount, setKtdfiSenderAccount] = useState<any>(null);
   const account = useActiveAccount();
 
-  // Fetch exchange rate with multiple fallback APIs
-  const fetchExchangeRate = async (): Promise<number> => {
-    const errors = [];
-    
-    for (const api of EXCHANGE_RATE_APIS) {
-      try {
-        console.log(`Trying ${api.name} API...`);
-        const response = await fetch(api.url, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`${api.name} responded with status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const rate = api.parser(data);
-
-        if (rate && typeof rate === 'number' && rate > 0) {
-          console.log(`Successfully got rate from ${api.name}: ${rate}`);
-          return rate;
-        } else {
-          throw new Error(`Invalid rate from ${api.name}: ${rate}`);
-        }
-      } catch (err) {
-        const errorMsg = `${api.name} failed: ${err instanceof Error ? err.message : 'Unknown error'}`;
-        console.warn(errorMsg);
-        errors.push(errorMsg);
-        continue; // Try next API
+  // Initialize KTDFI sender account
+  useEffect(() => {
+    const initializeKtdfiSender = async () => {
+      if (!KTDFI_SENDER_PRIVATE_KEY) {
+        console.error("KTDFI sender private key not found in environment variables");
+        setTransactionError("ระบบส่งเหรียญ KTDFI ยังไม่พร้อมใช้งาน");
+        return;
       }
-    }
 
-    // If all APIs fail, use fallback rate
-    console.warn('All exchange rate APIs failed, using fallback rate:', FALLBACK_EXCHANGE_RATE);
-    console.warn('Errors:', errors);
-    return FALLBACK_EXCHANGE_RATE;
-  };
+      try {
+        const senderAccount = privateKeyToAccount({
+          client,
+          privateKey: KTDFI_SENDER_PRIVATE_KEY,
+        });
+        setKtdfiSenderAccount(senderAccount);
+        console.log("KTDFI sender account initialized:", senderAccount.address);
+      } catch (error) {
+        console.error("Failed to initialize KTDFI sender account:", error);
+        setTransactionError("ไม่สามารถตั้งค่าระบบส่งเหรียญ KTDFI ได้");
+      }
+    };
+
+    initializeKtdfiSender();
+  }, []);
 
   // Fetch wallet balance when account changes
   useEffect(() => {
@@ -206,6 +206,47 @@ const ConfirmPage = () => {
     const interval = setInterval(updateExchangeRate, EXCHANGE_RATE_REFRESH_INTERVAL);
     return () => clearInterval(interval);
   }, []);
+
+  // Exchange rate fetch function
+  const fetchExchangeRate = async (): Promise<number> => {
+    const errors = [];
+    
+    for (const api of EXCHANGE_RATE_APIS) {
+      try {
+        console.log(`Trying ${api.name} API...`);
+        const response = await fetch(api.url, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`${api.name} responded with status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const rate = api.parser(data);
+
+        if (rate && typeof rate === 'number' && rate > 0) {
+          console.log(`Successfully got rate from ${api.name}: ${rate}`);
+          return rate;
+        } else {
+          throw new Error(`Invalid rate from ${api.name}: ${rate}`);
+        }
+      } catch (err) {
+        const errorMsg = `${api.name} failed: ${err instanceof Error ? err.message : 'Unknown error'}`;
+        console.warn(errorMsg);
+        errors.push(errorMsg);
+        continue; // Try next API
+      }
+    }
+
+    // If all APIs fail, use fallback rate
+    console.warn('All exchange rate APIs failed, using fallback rate:', FALLBACK_EXCHANGE_RATE);
+    console.warn('Errors:', errors);
+    return FALLBACK_EXCHANGE_RATE;
+  };
 
   // Retrieve stored data when page loads
   useEffect(() => {
@@ -337,6 +378,69 @@ const ConfirmPage = () => {
     }
   };
 
+  const executeKTDFITransaction = async (to: string, amount: string) => {
+    try {
+      if (!ktdfiSenderAccount) {
+        throw new Error("KTDFI sender account not initialized");
+      }
+
+      // Check KTDFI balance first
+      const ktdfiBalance = await readContract({
+        contract: getContract({
+          client,
+          chain: defineChain(polygon),
+          address: KTDFI_CONTRACT_ADDRESS
+        }),
+        method: {
+          type: "function",
+          name: "balanceOf",
+          inputs: [{ type: "address", name: "owner" }],
+          outputs: [{ type: "uint256" }],
+          stateMutability: "view"
+        },
+        params: [KTDFI_SENDER_ADDRESS]
+      });
+
+      const balanceInTokens = Number(ktdfiBalance) / 10**18;
+      if (balanceInTokens < Number(amount)) {
+        throw new Error(`Insufficient KTDFI balance. Sender has ${balanceInTokens} KTDFI, but needs ${amount} KTDFI`);
+      }
+
+      console.log(`Sending ${amount} KTDFI from ${KTDFI_SENDER_ADDRESS} to ${to}`);
+
+      // KTDFI is an ERC-20 token, so we need to use the transfer function
+      const transaction = prepareContractCall({
+        contract: getContract({
+          client,
+          chain: defineChain(polygon),
+          address: KTDFI_CONTRACT_ADDRESS
+        }),
+        method: {
+          type: "function",
+          name: "transfer",
+          inputs: [
+            { type: "address", name: "to" },
+            { type: "uint256", name: "value" }
+          ],
+          outputs: [{ type: "bool" }],
+          stateMutability: "nonpayable"
+        },
+        params: [to, toWei(amount)] // Convert KTDFI amount to wei (assuming 18 decimals)
+      });
+
+      const { transactionHash } = await sendTransaction({
+        transaction,
+        account: ktdfiSenderAccount // Use the KTDFI sender's account
+      });
+
+      console.log(`KTDFI transaction successful: ${transactionHash}`);
+      return { success: true, transactionHash };
+    } catch (error) {
+      console.error("KTDFI transaction failed:", error);
+      return { success: false, error: (error as Error).message };
+    }
+  };
+
   const handleFirstTransaction = async () => {
     if (!account || !adjustedExchangeRate || !data?.var1) return;
     
@@ -393,7 +497,45 @@ const ConfirmPage = () => {
         throw new Error(`Second transaction failed: ${secondTransaction.error}`);
       }
       
+      setSecondTxHash(secondTransaction.transactionHash!);
       setTransactionStatus(prev => ({ ...prev, secondTransaction: true }));
+
+      // Close second modal and open third modal for KTDFI transfer
+      setShowSecondConfirmationModal(false);
+      setShowThirdConfirmationModal(true);
+
+    } catch (err) {
+      console.error("Second transaction failed:", err);
+      setTransactionError(`การทำรายการล้มเหลว: ${(err as Error).message}`);
+    } finally {
+      setIsProcessingSecond(false);
+    }
+  };
+
+  const handleThirdTransaction = async () => {
+    if (!account || !firstTxHash || !secondTxHash || !ktdfiSenderAccount) return;
+    
+    setIsProcessingThird(true);
+    setTransactionError(null);
+
+    try {
+      // Calculate POL amount first
+      const totalPolAmount = calculatePolAmount();
+      if (!totalPolAmount) throw new Error("Unable to calculate POL amount");
+
+      const totalAmountWei = toWei(totalPolAmount);
+      const seventyPercentWei = BigInt(Math.floor(Number(totalAmountWei) * 0.7));
+      const thirtyPercentWei = BigInt(totalAmountWei) - seventyPercentWei;
+
+      // Execute third transaction (KTDFI token transfer to new member)
+      const thirdTransaction = await executeKTDFITransaction(account.address, KTDFI_AMOUNT);
+      
+      if (!thirdTransaction.success) {
+        throw new Error(`KTDFI transaction failed: ${thirdTransaction.error}`);
+      }
+      
+      setThirdTxHash(thirdTransaction.transactionHash!);
+      setTransactionStatus(prev => ({ ...prev, thirdTransaction: true }));
 
       // Get current time in Bangkok timezone
       const now = new Date();
@@ -417,7 +559,7 @@ const ConfirmPage = () => {
           senderAddress: account.address,
           dateTime: formattedDate,
           timezone: "Asia/Bangkok (UTC+7)",
-          referrer: data.var1,
+          referrer: data!.var1,
           currentExchangeRate: exchangeRate,
           adjustedExchangeRate: adjustedExchangeRate,
           exchangeRateBuffer: EXCHANGE_RATE_BUFFER,
@@ -429,10 +571,17 @@ const ConfirmPage = () => {
               transactionHash: firstTxHash
             },
             {
-              recipient: data.var1,
+              recipient: data!.var1,
               amountPOL: (Number(thirtyPercentWei) / 10**18).toFixed(4),
               amountTHB: (MEMBERSHIP_FEE_THB * 0.3).toFixed(2),
-              transactionHash: secondTransaction.transactionHash
+              transactionHash: secondTxHash
+            },
+            {
+              type: "KTDFI_TOKEN_TRANSFER",
+              recipient: account.address,
+              amountKTDFI: KTDFI_AMOUNT,
+              sender: KTDFI_SENDER_ADDRESS,
+              transactionHash: thirdTransaction.transactionHash
             }
           ],
           totalAmountPOL: totalPolAmount,
@@ -452,7 +601,7 @@ const ConfirmPage = () => {
       // Add user to PostgreSQL database (this will happen even if IPFS fails)
       const newUser: DatabaseUserData = {
         user_id: account.address,
-        referrer_id: data.var1,
+        referrer_id: data!.var1,
         plan_a: {
           dateTime: formattedDate,
           POL: totalPolAmount,
@@ -460,7 +609,8 @@ const ConfirmPage = () => {
           seventyPOL: (Number(seventyPercentWei) / 10**18).toFixed(4),
           thirtyPOL: (Number(thirtyPercentWei) / 10**18).toFixed(4),
           seventyTxHash: firstTxHash,
-          thirtyTxHash: secondTransaction.transactionHash!,
+          thirtyTxHash: secondTxHash,
+          ktdfiTxHash: thirdTransaction.transactionHash!,
           linkIPFS: ipfsLink
         }
       };
@@ -468,16 +618,16 @@ const ConfirmPage = () => {
       await addUserToDatabase(newUser);
 
       setIsTransactionComplete(true);
-      setShowSecondConfirmationModal(false);
+      setShowThirdConfirmationModal(false);
       
       // Redirect to user page after successful completion
       router.push(`/users/${account.address}`);
 
     } catch (err) {
-      console.error("Second transaction or database update failed:", err);
+      console.error("Third transaction or database update failed:", err);
       setTransactionError(`การทำรายการล้มเหลว: ${(err as Error).message}`);
     } finally {
-      setIsProcessingSecond(false);
+      setIsProcessingThird(false);
     }
   };
 
@@ -496,6 +646,15 @@ const ConfirmPage = () => {
       return;
     }
     setShowSecondConfirmationModal(false);
+    setTransactionError(null);
+  };
+
+  const handleCloseThirdModal = () => {
+    if (transactionStatus.thirdTransaction) {
+      // If third transaction is already completed, don't allow closing
+      return;
+    }
+    setShowThirdConfirmationModal(false);
     setTransactionError(null);
   };
 
@@ -543,12 +702,12 @@ const ConfirmPage = () => {
           ) : (
             <button
               className={`flex flex-col mt-1 border border-zinc-100 px-4 py-3 rounded-lg transition-colors ${
-                !account || !adjustedExchangeRate || isProcessingFirst || isProcessingSecond
+                !account || !adjustedExchangeRate || isProcessingFirst || isProcessingSecond || isProcessingThird
                   ? "bg-gray-600 cursor-not-allowed"
                   : "bg-red-700 hover:bg-red-800 hover:border-zinc-400 cursor-pointer"
               }`}
               onClick={() => setShowFirstConfirmationModal(true)}
-              disabled={!account || !adjustedExchangeRate || isProcessingFirst || isProcessingSecond}
+              disabled={!account || !adjustedExchangeRate || isProcessingFirst || isProcessingSecond || isProcessingThird}
             >
               <span className="text-[18px]">
                 {!account ? "กรุณาเชื่อมต่อกระเป๋า" : "ดำเนินการต่อ"}
@@ -720,7 +879,67 @@ const ConfirmPage = () => {
                         onClick={handleCloseSecondModal}
                         disabled={isProcessingSecond || transactionStatus.secondTransaction}
                       >
-                        {transactionStatus.secondTransaction ? 'เสร็จสิ้น' : 'ยกเลิก'}
+                        {transactionStatus.secondTransaction ? 'ดำเนินการต่อ' : 'ยกเลิก'}
+                      </button>
+                    </div>
+                  </div>
+                </ConfirmModal>
+              )}
+
+              {/* Third Confirmation Modal - KTDFI Token Transfer */}
+              {showThirdConfirmationModal && (
+                <ConfirmModal 
+                  onClose={handleCloseThirdModal}
+                  disableClose={isProcessingThird || transactionStatus.thirdTransaction}
+                >
+                  <div className="p-6 bg-gray-900 rounded-lg border border-gray-700 max-w-md">
+                    <h3 className="text-xl font-bold mb-4 text-center">รับเหรียญ KTDFI</h3>
+                    <div className="mb-6 text-center">
+                      <p className="text-[18px] text-gray-200">
+                        ขอแสดงความยินดี!<br />
+                        คุณจะได้รับเหรียญ KTDFI
+                        <span className="text-yellow-500 text-[22px] font-bold">
+                          <br />{KTDFI_AMOUNT} KTDFI
+                        </span>
+                        <p className="text-[16px] mt-2 text-gray-200">เป็นของขวัญต้อนรับ</p>
+                      </p>
+                      <div className="mt-4 p-3 bg-purple-900 border border-purple-400 rounded-lg">
+                        <p className="text-sm text-purple-200">
+                          เหรียญ KTDFI จะถูกโอนจาก<br />
+                          <span className="text-purple-300">{KTDFI_SENDER_ADDRESS.slice(0, 6)}...{KTDFI_SENDER_ADDRESS.slice(-4)}</span>
+                          <br />ไปยังกระเป๋าของคุณ
+                        </p>
+                      </div>
+                      {!ktdfiSenderAccount && (
+                        <p className="text-sm text-red-400 mt-2">
+                          ⚠️ ระบบส่งเหรียญยังไม่พร้อมใช้งาน
+                        </p>
+                      )}
+                      <p className="text-sm text-green-400 mt-4">
+                        ✅ การโอนค่าสมาชิกทั้ง 2 ครั้งสำเร็จแล้ว
+                      </p>
+                      {transactionError && (
+                        <p className="mt-3 text-red-400 text-sm">
+                          {transactionError}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      <button
+                        className={`px-6 py-3 rounded-lg font-medium text-[17px] ${
+                          isProcessingThird || !ktdfiSenderAccount ? "bg-gray-600 cursor-not-allowed" : "bg-purple-600 hover:bg-purple-700 cursor-pointer"
+                        }`}
+                        onClick={handleThirdTransaction}
+                        disabled={isProcessingThird || !ktdfiSenderAccount}
+                      >
+                        {isProcessingThird ? 'กำลังส่งเหรียญ...' : 'รับเหรียญ KTDFI'}
+                      </button>
+                      <button
+                        className="px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg cursor-pointer"
+                        onClick={handleCloseThirdModal}
+                        disabled={isProcessingThird || transactionStatus.thirdTransaction}
+                      >
+                        {transactionStatus.thirdTransaction ? 'เสร็จสิ้น' : 'ข้าม'}
                       </button>
                     </div>
                   </div>
@@ -762,7 +981,6 @@ const ConfirmPage = () => {
       <div className='w-full mt-8'>
         <Footer />
       </div>
-      
     </main>    
   );
 };
