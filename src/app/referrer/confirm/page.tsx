@@ -27,7 +27,7 @@ const KTDFI_AMOUNT = "1000"; // 1,000 KTDFI tokens
 const EXCHANGE_RATE_REFRESH_INTERVAL = 300000; // 5 minutes in ms
 const MEMBERSHIP_FEE_THB = 400;
 const EXCHANGE_RATE_BUFFER = 0.1; // 0.1 THB buffer to protect against fluctuations
-const FALLBACK_EXCHANGE_RATE = 6.3; // Fallback rate if all APIs fail
+const FALLBACK_EXCHANGE_RATE = 6.37; // Fallback rate if all APIs fail
 
 // KTDFI Sender Private Key (should be in environment variables)
 const KTDFI_SENDER_PRIVATE_KEY = process.env.NEXT_PUBLIC_KTDFI_SENDER_PRIVATE_KEY;
