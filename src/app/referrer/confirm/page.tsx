@@ -2,6 +2,7 @@
 // separate two modals for each particular send POL transaction
 // Retry modal until each particular trasaction succeeded
 // src/app/referrer/confirm/page.tsx
+// src/app/referrer/confirm/page.tsx
 "use client";
 
 import { useTheme } from '@/context/ThemeContext';
@@ -25,9 +26,33 @@ const KTDFI_SENDER_ADDRESS = "0x984395c00E5451437ed47346e6911c2F5CC31ad3";
 const KTDFI_CONTRACT_ADDRESS = "0x532313164FDCA3ACd2C2900455B208145f269f0e";
 const KTDFI_AMOUNT = "1000"; // 1,000 KTDFI tokens
 const EXCHANGE_RATE_REFRESH_INTERVAL = 300000; // 5 minutes in ms
-const MEMBERSHIP_FEE_THB = 400;
 const EXCHANGE_RATE_BUFFER = 0.1; // 0.1 THB buffer to protect against fluctuations
 const FALLBACK_EXCHANGE_RATE = 6.2; // Fallback rate if all APIs fail
+
+// Membership options
+const MEMBERSHIP_OPTIONS = [
+  {
+    id: 'novice',
+    name: 'Novice Member',
+    thb: 400,
+    description: 'เริ่มต้น',
+    ktdfiBonus: 1000
+  },
+  {
+    id: 'jubilant',
+    name: 'Jubilant Member',
+    thb: 4000,
+    description: 'ปานกลาง',
+    ktdfiBonus: 50000
+  },
+  {
+    id: 'buoyant',
+    name: 'Buoyant Member',
+    thb: 8000,
+    description: 'ระดับสูง',
+    ktdfiBonus: 120000
+  }
+];
 
 // KTDFI Sender Private Key (should be in environment variables)
 const KTDFI_SENDER_PRIVATE_KEY = process.env.NEXT_PUBLIC_KTDFI_SENDER_PRIVATE_KEY;
@@ -56,6 +81,9 @@ type PlanAData = {
   thirtyTxHash: string;
   ktdfiTxHash: string;
   linkIPFS: string;
+  membershipType: string;
+  membershipName: string;
+  membershipTHB: number;
 };
 
 type DatabaseUserData = {
@@ -83,6 +111,68 @@ const EXCHANGE_RATE_APIS = [
   }
 ];
 
+// Membership Selection Modal Component
+const MembershipSelectionModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onSelect: (membership: typeof MEMBERSHIP_OPTIONS[0]) => void;
+  polBalance: string;
+  exchangeRate: number | null;
+}> = ({ isOpen, onClose, onSelect, polBalance, exchangeRate }) => {
+  if (!isOpen) return null;
+
+  return (
+    <ConfirmModal onClose={onClose} disableClose={false}>
+      <div className="p-6 bg-gray-900 rounded-lg border border-gray-700 max-w-md w-full">
+        <h3 className="text-xl font-bold mb-4 text-center">เลือกประเภทสมาชิก</h3>
+        <p className="text-gray-300 text-center mb-6">กรุณาเลือกประเภทสมาชิกที่ต้องการ</p>
+        
+        <div className="space-y-4 mb-6">
+          {MEMBERSHIP_OPTIONS.map((membership) => (
+            <div
+              key={membership.id}
+              className="p-4 border border-gray-600 rounded-lg hover:border-green-500 hover:bg-gray-800 cursor-pointer transition-colors"
+              onClick={() => onSelect(membership)}
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <h4 className="font-bold text-lg text-white">{membership.name}</h4>
+                  <p className="text-gray-300 text-sm">{membership.description}</p>
+                  <p className="text-purple-400 text-sm mt-1">
+                    โบนัส: {membership.ktdfiBonus.toLocaleString()} KTDFI
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-yellow-500 font-bold text-lg">{membership.thb.toLocaleString()} THB</p>
+                  {exchangeRate && (
+                    <p className="text-gray-400 text-sm">
+                      ≈ {((membership.thb / exchangeRate)).toFixed(4)} POL
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {exchangeRate && (
+          <div className="text-center text-sm text-gray-400 mb-4">
+            <p>อัตราแลกเปลี่ยนปัจจุบัน: {exchangeRate.toFixed(4)} THB/POL</p>
+            <p>POL ในกระเป๋าของคุณ: <span className="text-green-400">{polBalance}</span></p>
+          </div>
+        )}
+
+        <button
+          className="w-full py-3 bg-gray-600 hover:bg-gray-700 rounded-lg cursor-pointer"
+          onClick={onClose}
+        >
+          ปิด
+        </button>
+      </div>
+    </ConfirmModal>
+  );
+};
+
 const ConfirmPage = () => {
   const router = useRouter();
   const [isTransactionComplete, setIsTransactionComplete] = useState(false);
@@ -97,6 +187,7 @@ const ConfirmPage = () => {
   const [adjustedExchangeRate, setAdjustedExchangeRate] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [showMembershipSelection, setShowMembershipSelection] = useState(false);
   const [showFirstConfirmationModal, setShowFirstConfirmationModal] = useState(false);
   const [showSecondConfirmationModal, setShowSecondConfirmationModal] = useState(false);
   const [showThirdConfirmationModal, setShowThirdConfirmationModal] = useState(false);
@@ -111,6 +202,7 @@ const ConfirmPage = () => {
   const [loadingMembership, setLoadingMembership] = useState(false);
   const [transactionError, setTransactionError] = useState<string | null>(null);
   const [ktdfiSenderAccount, setKtdfiSenderAccount] = useState<any>(null);
+  const [selectedMembership, setSelectedMembership] = useState<typeof MEMBERSHIP_OPTIONS[0] | null>(null);
   const account = useActiveAccount();
 
   // Initialize KTDFI sender account
@@ -287,8 +379,8 @@ const ConfirmPage = () => {
   }, [account?.address]);
 
   const calculatePolAmount = () => {
-    if (!adjustedExchangeRate) return null;
-    const polAmount = MEMBERSHIP_FEE_THB / adjustedExchangeRate;
+    if (!adjustedExchangeRate || !selectedMembership) return null;
+    const polAmount = selectedMembership.thb / adjustedExchangeRate;
     return polAmount.toFixed(4);
   };
 
@@ -441,8 +533,15 @@ const ConfirmPage = () => {
     }
   };
 
+  // Membership selection handler
+  const handleMembershipSelect = (membership: typeof MEMBERSHIP_OPTIONS[0]) => {
+    setSelectedMembership(membership);
+    setShowMembershipSelection(false);
+    setShowFirstConfirmationModal(true);
+  };
+
   const handleFirstTransaction = async () => {
-    if (!account || !adjustedExchangeRate || !data?.var1) return;
+    if (!account || !adjustedExchangeRate || !data?.var1 || !selectedMembership) return;
     
     setIsProcessingFirst(true);
     setTransactionError(null);
@@ -477,7 +576,7 @@ const ConfirmPage = () => {
   };
 
   const handleSecondTransaction = async () => {
-    if (!account || !adjustedExchangeRate || !data?.var1 || !firstTxHash) return;
+    if (!account || !adjustedExchangeRate || !data?.var1 || !firstTxHash || !selectedMembership) return;
     
     setIsProcessingSecond(true);
     setTransactionError(null);
@@ -513,7 +612,7 @@ const ConfirmPage = () => {
   };
 
   const handleThirdTransaction = async () => {
-    if (!account || !firstTxHash || !secondTxHash || !ktdfiSenderAccount) return;
+    if (!account || !firstTxHash || !secondTxHash || !ktdfiSenderAccount || !selectedMembership) return;
     
     setIsProcessingThird(true);
     setTransactionError(null);
@@ -528,7 +627,8 @@ const ConfirmPage = () => {
       const thirtyPercentWei = BigInt(totalAmountWei) - seventyPercentWei;
 
       // Execute third transaction (KTDFI token transfer to new member)
-      const thirdTransaction = await executeKTDFITransaction(account.address, KTDFI_AMOUNT);
+      const ktdfiAmount = selectedMembership.ktdfiBonus.toString();
+      const thirdTransaction = await executeKTDFITransaction(account.address, ktdfiAmount);
       
       if (!thirdTransaction.success) {
         throw new Error(`KTDFI transaction failed: ${thirdTransaction.error}`);
@@ -560,6 +660,9 @@ const ConfirmPage = () => {
           dateTime: formattedDate,
           timezone: "Asia/Bangkok (UTC+7)",
           referrer: data!.var1,
+          membershipType: selectedMembership.id,
+          membershipName: selectedMembership.name,
+          membershipTHB: selectedMembership.thb,
           currentExchangeRate: exchangeRate,
           adjustedExchangeRate: adjustedExchangeRate,
           exchangeRateBuffer: EXCHANGE_RATE_BUFFER,
@@ -567,25 +670,25 @@ const ConfirmPage = () => {
             {
               recipient: RECIPIENT_ADDRESS,
               amountPOL: (Number(seventyPercentWei) / 10**18).toFixed(4),
-              amountTHB: (MEMBERSHIP_FEE_THB * 0.7).toFixed(2),
+              amountTHB: (selectedMembership.thb * 0.7).toFixed(2),
               transactionHash: firstTxHash
             },
             {
               recipient: data!.var1,
               amountPOL: (Number(thirtyPercentWei) / 10**18).toFixed(4),
-              amountTHB: (MEMBERSHIP_FEE_THB * 0.3).toFixed(2),
+              amountTHB: (selectedMembership.thb * 0.3).toFixed(2),
               transactionHash: secondTxHash
             },
             {
               type: "KTDFI_TOKEN_TRANSFER",
               recipient: account.address,
-              amountKTDFI: KTDFI_AMOUNT,
+              amountKTDFI: ktdfiAmount,
               sender: KTDFI_SENDER_ADDRESS,
               transactionHash: thirdTransaction.transactionHash
             }
           ],
           totalAmountPOL: totalPolAmount,
-          totalAmountTHB: MEMBERSHIP_FEE_THB
+          totalAmountTHB: selectedMembership.thb
         };
 
         ipfsHash = await storeReportInIPFS(report);
@@ -611,7 +714,10 @@ const ConfirmPage = () => {
           seventyTxHash: firstTxHash,
           thirtyTxHash: secondTxHash,
           ktdfiTxHash: thirdTransaction.transactionHash!,
-          linkIPFS: ipfsLink
+          linkIPFS: ipfsLink,
+          membershipType: selectedMembership.id,
+          membershipName: selectedMembership.name,
+          membershipTHB: selectedMembership.thb
         }
       };
 
@@ -637,6 +743,7 @@ const ConfirmPage = () => {
       return;
     }
     setShowFirstConfirmationModal(false);
+    setSelectedMembership(null);
     setTransactionError(null);
   };
 
@@ -658,6 +765,10 @@ const ConfirmPage = () => {
     setTransactionError(null);
   };
 
+  const handleCloseMembershipModal = () => {
+    setShowMembershipSelection(false);
+  };
+
   const PaymentButton = () => {
     if (loadingMembership) {
       return (
@@ -670,18 +781,13 @@ const ConfirmPage = () => {
     return (
       <div className="flex flex-col gap-4 md:gap-8">
         <p className="mt-4 text-center text-[18px] text-gray-200">
-          <b>ค่าสมาชิก: <p className="text-yellow-500 text-[22px]">{MEMBERSHIP_FEE_THB} THB
+          <b>เลือกประเภทสมาชิก</b>
           {adjustedExchangeRate && (
             <>
-                &nbsp; ( ≈ {calculatePolAmount()} POL )
-            </>
-          )}
-          </p></b>
-          {exchangeRate && adjustedExchangeRate && (
-            <>
+              <br />
               <span className="text-[17px] text-green-400">
                 อัตราแลกเปลี่ยน: {adjustedExchangeRate.toFixed(2)} THB/POL
-              </span><br />
+              </span>
             </>
           )}
           {loading && !error && (
@@ -706,11 +812,11 @@ const ConfirmPage = () => {
                   ? "bg-gray-600 cursor-not-allowed"
                   : "bg-red-700 hover:bg-red-800 hover:border-zinc-400 cursor-pointer"
               }`}
-              onClick={() => setShowFirstConfirmationModal(true)}
+              onClick={() => setShowMembershipSelection(true)}
               disabled={!account || !adjustedExchangeRate || isProcessingFirst || isProcessingSecond || isProcessingThird}
             >
               <span className="text-[18px]">
-                {!account ? "กรุณาเชื่อมต่อกระเป๋า" : "ดำเนินการต่อ"}
+                {!account ? "กรุณาเชื่อมต่อกระเป๋า" : "เลือกประเภทสมาชิก"}
               </span>
             </button>
           )}
@@ -771,8 +877,17 @@ const ConfirmPage = () => {
             <div className="flex flex-col items-center justify-center w-full p-2 m-2">
               <PaymentButton />
               
+              {/* Membership Selection Modal */}
+              <MembershipSelectionModal
+                isOpen={showMembershipSelection}
+                onClose={handleCloseMembershipModal}
+                onSelect={handleMembershipSelect}
+                polBalance={polBalance}
+                exchangeRate={exchangeRate}
+              />
+
               {/* First Confirmation Modal - Cannot be closed if transaction is in progress or completed */}
-              {showFirstConfirmationModal && (
+              {showFirstConfirmationModal && selectedMembership && (
                 <ConfirmModal 
                   onClose={handleCloseFirstModal}
                   disableClose={isProcessingFirst || transactionStatus.firstTransaction}
@@ -780,10 +895,17 @@ const ConfirmPage = () => {
                   <div className="p-6 bg-gray-900 rounded-lg border border-gray-700 max-w-md">
                     <h3 className="text-xl font-bold mb-4 text-center">ยืนยันการชำระครั้งที่ 1</h3>
                     <div className="mb-6 text-center">
+                      <div className="mb-4 p-3 bg-gray-800 rounded-lg">
+                        <p className="text-lg font-bold text-white">{selectedMembership.name}</p>
+                        <p className="text-yellow-500 text-[22px] font-bold">
+                          {selectedMembership.thb.toLocaleString()} THB
+                        </p>
+                        <p className="text-gray-400 text-sm">{selectedMembership.description}</p>
+                      </div>
                       <p className="text-[18px] text-gray-200">
                         โอนค่าสมาชิกส่วนที่ 1 (70%)<br />
                         <span className="text-yellow-500 text-[22px] font-bold">
-                          {(MEMBERSHIP_FEE_THB * 0.7).toFixed(2)} THB <br />
+                          {(selectedMembership.thb * 0.7).toFixed(2)} THB <br />
                           (≈ {(Number(calculatePolAmount()) * 0.7).toFixed(4)} POL)
                         </span>
                         <p className="text-[16px] mt-2 text-gray-200">ไปยังระบบ</p>
@@ -843,10 +965,18 @@ const ConfirmPage = () => {
                   <div className="p-6 bg-gray-900 rounded-lg border border-gray-700 max-w-md">
                     <h3 className="text-xl font-bold mb-4 text-center">ยืนยันการชำระครั้งที่ 2</h3>
                     <div className="mb-6 text-center">
+                      {selectedMembership && (
+                        <div className="mb-4 p-3 bg-gray-800 rounded-lg">
+                          <p className="text-lg font-bold text-white">{selectedMembership.name}</p>
+                          <p className="text-yellow-500 text-[22px] font-bold">
+                            {selectedMembership.thb.toLocaleString()} THB
+                          </p>
+                        </div>
+                      )}
                       <p className="text-[18px] text-gray-200">
                         โอนค่าสมาชิกส่วนที่ 2 (30%)<br />
                         <span className="text-yellow-500 text-[22px] font-bold">
-                          {(MEMBERSHIP_FEE_THB * 0.3).toFixed(2)} THB (≈ {(Number(calculatePolAmount()) * 0.3).toFixed(4)} POL)
+                          {selectedMembership ? (selectedMembership.thb * 0.3).toFixed(2) : '0.00'} THB (≈ {(Number(calculatePolAmount()) * 0.3).toFixed(4)} POL)
                         </span>
                         <p className="text-[16px] mt-2 text-gray-200">ไปยังผู้แนะนำ</p>
                       </p>
@@ -895,13 +1025,24 @@ const ConfirmPage = () => {
                   <div className="p-6 bg-gray-900 rounded-lg border border-gray-700 max-w-md">
                     <h3 className="text-xl font-bold mb-4 text-center">รับเหรียญ KTDFI</h3>
                     <div className="mb-6 text-center">
+                      {selectedMembership && (
+                        <div className="mb-4 p-3 bg-purple-800 rounded-lg">
+                          <p className="text-lg font-bold text-white">{selectedMembership.name}</p>
+                          <p className="text-yellow-500 text-[22px] font-bold">
+                            {selectedMembership.thb.toLocaleString()} THB
+                          </p>
+                          <p className="text-purple-300 text-lg font-bold">
+                            โบนัส: {selectedMembership.ktdfiBonus.toLocaleString()} KTDFI
+                          </p>
+                        </div>
+                      )}
                       <p className="text-[18px] text-gray-200">
                         ขอแสดงความยินดี!<br />
                         คุณจะได้รับเหรียญ KTDFI
                         <span className="text-yellow-500 text-[22px] font-bold">
-                          <br />{KTDFI_AMOUNT} KTDFI
+                          <br />{selectedMembership?.ktdfiBonus.toLocaleString()} KTDFI
                         </span>
-                        <p className="text-[16px] mt-2 text-gray-200">เป็นของขวัญต้อนรับ</p>
+                        <p className="text-[16px] mt-2 text-gray-200">Welcome Bonus</p>
                       </p>
                       <div className="mt-4 p-3 bg-purple-900 border border-purple-400 rounded-lg">
                         <p className="text-sm text-purple-200">
