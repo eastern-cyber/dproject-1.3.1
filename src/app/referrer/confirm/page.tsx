@@ -123,27 +123,27 @@ const MembershipSelectionModal: React.FC<{
 
   return (
     <ConfirmModal onClose={onClose} disableClose={false}>
-      <div className="p-6 bg-gray-900 rounded-lg border border-gray-700 max-w-md w-full">
+      <div className="p-6 bg-gray-950 rounded-lg border border-gray-700 max-w-md w-full">
         <h3 className="text-xl font-bold mb-4 text-center">เลือกประเภทสมาชิก</h3>
-        <p className="text-gray-300 text-center mb-6">กรุณาเลือกประเภทสมาชิกที่ต้องการ</p>
+        <p className="text-gray-300 text-center mb-8">Membership</p>
         
         <div className="space-y-4 mb-6">
           {MEMBERSHIP_OPTIONS.map((membership) => (
             <div
               key={membership.id}
-              className="p-4 border border-gray-600 rounded-lg hover:border-green-500 hover:bg-gray-800 cursor-pointer transition-colors"
+              className="p-4 bg-sky-900 border border-gray-600 rounded-lg hover:border-green-500 hover:bg-gray-800 cursor-pointer transition-colors"
               onClick={() => onSelect(membership)}
             >
               <div className="flex justify-between items-start">
                 <div className="flex-1">
-                  <h4 className="font-bold text-lg text-white">{membership.name}</h4>
-                  <p className="text-gray-300 text-sm">{membership.description}</p>
-                  <p className="text-purple-400 text-sm mt-1">
+                  <h4 className="font-bold text-lg text-amber-300">{membership.name}</h4>
+                  <p className="text-yellow-300 text-sm">{membership.description}</p>
+                  <p className="text-purple-300 text-m mt-1">
                     โบนัส: {membership.ktdfiBonus.toLocaleString()} KTDFI
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-yellow-500 font-bold text-lg">{membership.thb.toLocaleString()} THB</p>
+                  <p className="text-yellow-300 font-bold text-lg">{membership.thb.toLocaleString()} THB</p>
                   {exchangeRate && (
                     <p className="text-gray-400 text-sm">
                       ≈ {((membership.thb / exchangeRate)).toFixed(4)} POL
