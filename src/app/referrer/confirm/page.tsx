@@ -40,14 +40,14 @@ const MEMBERSHIP_OPTIONS = [
   },
   {
     id: 'jubilant',
-    name: 'Jubilant Member',
+    name: 'Special 1',
     thb: 4000,
-    description: 'ปานกลาง',
+    description: '',
     ktdfiBonus: 50000
   },
   {
     id: 'buoyant',
-    name: 'Buoyant Member',
+    name: 'Special 2',
     thb: 8000,
     description: 'ระดับสูง',
     ktdfiBonus: 120000
