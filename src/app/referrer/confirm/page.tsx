@@ -123,15 +123,15 @@ const MembershipSelectionModal: React.FC<{
 
   return (
     <ConfirmModal onClose={onClose} disableClose={false}>
-      <div className="p-6 bg-gray-950 rounded-lg border border-gray-700 max-w-md w-full">
-        <h3 className="text-xl font-bold mb-4 text-center">เลือกประเภทสมาชิก</h3>
-        <p className="text-gray-300 text-center mb-8">Membership</p>
+      <div className="p-6 bg-gray-900 rounded-lg border border-gray-700 max-w-md w-full">
+        <h3 className="text-[24px] font-bold mb-2 text-center">รูปแบบสมาชิก</h3>
+        <p className="text-gray-300 text-[18px] text-center pb-6">Membership</p>
         
         <div className="space-y-4 mb-6">
           {MEMBERSHIP_OPTIONS.map((membership) => (
             <div
               key={membership.id}
-              className="p-4 bg-sky-900 border border-gray-600 rounded-lg hover:border-green-500 hover:bg-gray-800 cursor-pointer transition-colors"
+              className="p-4 bg-emerald-950 border border-gray-200 rounded-lg hover:border-green-500 hover:bg-gray-800 cursor-pointer transition-colors"
               onClick={() => onSelect(membership)}
             >
               <div className="flex justify-between items-start">
@@ -145,7 +145,7 @@ const MembershipSelectionModal: React.FC<{
                 <div className="text-right">
                   <p className="text-yellow-300 font-bold text-lg">{membership.thb.toLocaleString()} THB</p>
                   {exchangeRate && (
-                    <p className="text-gray-400 text-sm">
+                    <p className="text-gray-200 text-sm">
                       ≈ {((membership.thb / exchangeRate)).toFixed(4)} POL
                     </p>
                   )}
@@ -781,7 +781,7 @@ const ConfirmPage = () => {
     return (
       <div className="flex flex-col gap-4 md:gap-8">
         <p className="mt-4 text-center text-[18px] text-gray-200">
-          <b>เลือกประเภทสมาชิก</b>
+          <b>รูปแบบสมาชิก</b>
           {adjustedExchangeRate && (
             <>
               <br />
@@ -816,7 +816,7 @@ const ConfirmPage = () => {
               disabled={!account || !adjustedExchangeRate || isProcessingFirst || isProcessingSecond || isProcessingThird}
             >
               <span className="text-[18px]">
-                {!account ? "กรุณาเชื่อมต่อกระเป๋า" : "เลือกประเภทสมาชิก"}
+                {!account ? "กรุณาเชื่อมต่อกระเป๋า" : "ดำเนินการต่อ"}
               </span>
             </button>
           )}
