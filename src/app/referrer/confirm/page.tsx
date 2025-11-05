@@ -35,7 +35,7 @@ const MEMBERSHIP_OPTIONS = [
     id: 'novice',
     name: 'Premium Member',
     thb: 400,
-    description: 'เริ่มต้น',
+    description: '',
     ktdfiBonus: 1000
   },
   {
@@ -49,7 +49,7 @@ const MEMBERSHIP_OPTIONS = [
     id: 'buoyant',
     name: 'Special 2',
     thb: 8000,
-    description: 'ระดับสูง',
+    description: '',
     ktdfiBonus: 120000
   }
 ];
