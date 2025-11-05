@@ -33,7 +33,7 @@ const FALLBACK_EXCHANGE_RATE = 5.35; // Fallback rate if all APIs fail
 const MEMBERSHIP_OPTIONS = [
   {
     id: 'novice',
-    name: 'Novice Member',
+    name: 'Premium Member',
     thb: 400,
     description: 'เริ่มต้น',
     ktdfiBonus: 1000
