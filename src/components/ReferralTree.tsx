@@ -367,9 +367,9 @@ const ReferralTree: React.FC<ReferralTreeProps> = ({ referrerId }) => {
                     <tr className="bg-gray-900 text-[19px] font-bold">
                       <th className="border border-gray-400 py-3 px-4">Gen</th>
                       <th className="border border-gray-400 py-3 px-4">จำนวนสมาชิก<br />(คน)</th>
-                      <th className="border border-gray-400 py-3 px-4">รายได้ Caring Bonus<br /> 2% 10 ชั้นลึก</th>
+                      <th className="border border-gray-400 py-3 px-4">รายได้ Caring Bonus<br /> (POL)</th>
                       <th className="border border-gray-400 py-3 px-4">เก็บสะสม<br />25%</th>
-                      <th className="border border-gray-400 py-3 px-4">ได้รับ<br />POL</th>
+                      <th className="border border-gray-400 py-3 px-4">ได้รับ<br />(POL)</th>
                     </tr>
                   </thead>
                   <tbody>
