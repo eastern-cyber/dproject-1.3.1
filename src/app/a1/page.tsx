@@ -20,7 +20,7 @@ const EXCHANGE_RATE_REFRESH_INTERVAL = 300000; // 5 minutes in ms
 const MEMBERSHIP_FEE_THB = 400;
 const EXCHANGE_RATE_BUFFER = 0.1; // 0.1 THB buffer to protect against fluctuations
 const MINIMUM_PAYMENT = 0.01; // Minimum POL to pay for transaction
-const FALLBACK_EXCHANGE_RATE = 4.78; // Fallback rate if all APIs fail
+const FALLBACK_EXCHANGE_RATE = 4.7; // Fallback rate if all APIs fail
 
 // Exchange rate API endpoints
 const EXCHANGE_RATE_APIS = [
