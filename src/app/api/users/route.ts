@@ -4,6 +4,13 @@ import { NextResponse } from 'next/server';
 import sql from '@/lib/db';
 
 export async function GET(request: Request) {
+  const headers = {
+    'Access-Control-Allow-Origin': 'https://users.dfi.fund',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
+  };
+
   console.log('API /api/users called');
   
   if (!sql) {
