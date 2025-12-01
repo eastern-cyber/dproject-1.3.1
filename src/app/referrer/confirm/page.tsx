@@ -26,8 +26,8 @@ const KTDFI_SENDER_ADDRESS = "0x984395c00E5451437ed47346e6911c2F5CC31ad3";
 const KTDFI_CONTRACT_ADDRESS = "0x532313164FDCA3ACd2C2900455B208145f269f0e";
 const KTDFI_AMOUNT = "1000"; // 1,000 KTDFI tokens
 const EXCHANGE_RATE_REFRESH_INTERVAL = 300000; // 5 minutes in ms
-const EXCHANGE_RATE_BUFFER = 0.1; // 0.1 THB buffer to protect against fluctuations
-const FALLBACK_EXCHANGE_RATE = 3.98; // Fallback rate if all APIs fail
+const EXCHANGE_RATE_BUFFER = 0; // THB buffer to protect against fluctuations
+const FALLBACK_EXCHANGE_RATE = 4; // Fallback rate if all APIs fail
 
 // Membership options
 const MEMBERSHIP_OPTIONS = [
