@@ -8,11 +8,19 @@ import dprojectIcon from "../../../public/DProjectLogo_650x600.svg";
 import Link from 'next/link';
 import WalletConnect from '@/components/WalletConnect';
 import Footer from '@/components/Footer';
-import { defineChain, getContract, toWei, sendTransaction, readContract, prepareTransaction } from "thirdweb";
+import { defineChain, getContract, toWei, sendTransaction, readContract, prepareContractCall } from "thirdweb";
 import { polygon } from "thirdweb/chains";
 import { client } from "@/lib/client";
 import { useRouter } from 'next/navigation';
-import { ConfirmModal } from '@/components/confirmModal'; // Reuse the same modal component
+import { ConfirmModal } from '@/components/confirmModal';
+import { privateKeyToAccount } from "thirdweb/wallets";
+
+// ===== ADD THESE CONSTANTS =====
+const KTDFI_SENDER_ADDRESS = "0x778cE5fB24792B79446Fe02a483C86E527e8C295";
+const KTDFI_CONTRACT_ADDRESS = "0x532313164FDCA3ACd2C2900455B208145f269f0e";
+const KTDFI_AMOUNT_D1_MEMBER = "10000"; // 10,000 KTDFI tokens for D1 member
+const KTDFI_AMOUNT_D1_REFERRER = "10000"; // 10,000 KTDFI tokens for referrer bonus
+const KTDFI_SENDER_PRIVATE_KEY = process.env.NEXT_PUBLIC_KTDFI_SENDER_PRIVATE_KEY_D1; // Use different env var for D1
 
 // Constants
 const RECIPIENT_ADDRESS = "0x3B16949e2fec02E1f9A2557cE7FEBe74f780fADc";
@@ -20,7 +28,7 @@ const EXCHANGE_RATE_REFRESH_INTERVAL = 300000; // 5 minutes in ms
 const MEMBERSHIP_FEE_THB = 800;
 const EXCHANGE_RATE_BUFFER = 0; // THB buffer to protect against fluctuations
 const MINIMUM_PAYMENT = 0.01; // Minimum POL to pay for transaction
-const FALLBACK_EXCHANGE_RATE = 4.1; // Fallback rate if all APIs fail
+const FALLBACK_EXCHANGE_RATE = 4.11; // Fallback rate if all APIs fail
 
 // Exchange rate API endpoints
 const EXCHANGE_RATE_APIS = [
@@ -80,9 +88,12 @@ interface BonusData {
   updated_at: string;
 }
 
+// Update TransactionStatus interface
 type TransactionStatus = {
   firstTransaction: boolean;
   secondTransaction: boolean;
+  thirdTransaction: boolean; // KTDFI to member
+  fourthTransaction: boolean; // ADD THIS: KTDFI to referrer
   error?: string;
 };
 
@@ -97,27 +108,57 @@ export default function PlanB() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Transaction states - Following Plan A pattern
+  // Update transaction status
   const [isTransactionComplete, setIsTransactionComplete] = useState(false);
   const [transactionStatus, setTransactionStatus] = useState<TransactionStatus>({
     firstTransaction: false,
-    secondTransaction: false
+    secondTransaction: false,
+    thirdTransaction: false,
+    fourthTransaction: false // ADD THIS
   });
   
   // Modal states - Following Plan A pattern
   const [showFirstConfirmationModal, setShowFirstConfirmationModal] = useState(false);
   const [showSecondConfirmationModal, setShowSecondConfirmationModal] = useState(false);
+  const [showThirdConfirmationModal, setShowThirdConfirmationModal] = useState(false); // ADD THIS
+  const [showFourthConfirmationModal, setShowFourthConfirmationModal] = useState(false); // ADD THIS
   const [isProcessingFirst, setIsProcessingFirst] = useState(false);
   const [isProcessingSecond, setIsProcessingSecond] = useState(false);
-  
+  const [isProcessingThird, setIsProcessingThird] = useState(false); // ADD THIS
+  const [isProcessingFourth, setIsProcessingFourth] = useState(false); // ADD THIS
+
   // Data states
+  // Add third transaction hash and KTDFI sender
+  // Add fourth transaction hash
   const [firstTxHash, setFirstTxHash] = useState<string>("");
   const [secondTxHash, setSecondTxHash] = useState<string>("");
+  const [thirdTxHash, setThirdTxHash] = useState<string>("");
+  const [fourthTxHash, setFourthTxHash] = useState<string>(""); // ADD THIS
   const [polBalance, setPolBalance] = useState<string>("0");
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const [adjustedExchangeRate, setAdjustedExchangeRate] = useState<number | null>(null);
   const [rateLoading, setRateLoading] = useState(true);
   const [transactionError, setTransactionError] = useState<string | null>(null);
+
+  // ADD KTDFI SENDER STATE
+  const [ktdfiSenderAccount, setKtdfiSenderAccount] = useState<any>(null);
+
+  // Add this at the beginning of your component function, after state declarations
+  console.log("Component state:", {
+    account: account?.address,
+    userData: !!userData,
+    d1Data: !!d1Data,
+    exchangeRate,
+    adjustedExchangeRate,
+    polBalance,
+    loading,
+    rateLoading
+  });
+
+  // Also add a useEffect to log when account changes
+  useEffect(() => {
+    console.log("Account changed:", account?.address);
+  }, [account?.address]);
 
   // Fetch exchange rate with multiple fallback APIs - Same as Plan A
   const fetchExchangeRate = async (): Promise<number> => {
@@ -281,6 +322,31 @@ export default function PlanB() {
     }
   }, [account]);
 
+  // ===== ADD KTDFI SENDER INITIALIZATION =====
+  useEffect(() => {
+    const initializeKtdfiSender = async () => {
+      if (!KTDFI_SENDER_PRIVATE_KEY) {
+        console.error("KTDFI sender private key not found in environment variables");
+        setTransactionError("ระบบส่งเหรียญ KTDFI ยังไม่พร้อมใช้งาน");
+        return;
+      }
+
+      try {
+        const senderAccount = privateKeyToAccount({
+          client,
+          privateKey: KTDFI_SENDER_PRIVATE_KEY,
+        });
+        setKtdfiSenderAccount(senderAccount);
+        console.log("KTDFI sender account initialized:", senderAccount.address);
+      } catch (error) {
+        console.error("Failed to initialize KTDFI sender account:", error);
+        setTransactionError("ไม่สามารถตั้งค่าระบบส่งเหรียญ KTDFI ได้");
+      }
+    };
+
+    initializeKtdfiSender();
+  }, []);
+
   // Helper functions
   const calculateRequiredPolAmount = () => {
     if (!adjustedExchangeRate) return null;
@@ -297,9 +363,15 @@ export default function PlanB() {
     return requiredPolFor800THB - netBonusValue;
   };
 
-  // Transaction execution - Following Plan A pattern with better error handling
+  // Transaction execution - Fixed with better error handling
   const executeTransaction = async (to: string, amountWei: bigint) => {
     try {
+      console.log("Preparing transaction:", {
+        to,
+        amountWei: amountWei.toString(),
+        amountPOL: (Number(amountWei) / 10**18).toString()
+      });
+
       // Validate recipient address
       if (!isValidEthereumAddress(to)) {
         return { 
@@ -308,32 +380,96 @@ export default function PlanB() {
         };
       }
 
-      const transaction = prepareTransaction({
-        to,
+      if (!account) {
+        return {
+          success: false,
+          error: "No wallet connected"
+        };
+      }
+
+      // Create the transaction - FIXED: Using correct thirdweb syntax
+      const transaction = {
+        to: to as `0x${string}`,
         value: amountWei,
         chain: defineChain(polygon),
         client,
-      });
+      };
+
+      console.log("Sending transaction:", transaction);
 
       const { transactionHash } = await sendTransaction({
         transaction,
-        account: account!
+        account: account
       });
 
+      console.log("Transaction successful, hash:", transactionHash);
       return { success: true, transactionHash };
     } catch (error: any) {
-      console.error("Transaction failed:", error);
+      console.error("Transaction failed with detailed error:", error);
       
       let errorMessage = error.message || "Unknown error";
+      
+      // More specific error messages
       if (errorMessage.includes("user rejected") || errorMessage.includes("denied transaction")) {
         errorMessage = "User rejected the transaction";
       } else if (errorMessage.includes("insufficient funds")) {
         errorMessage = "Insufficient funds for transaction";
       } else if (errorMessage.includes("gas")) {
-        errorMessage = "Gas estimation failed";
+        errorMessage = "Gas estimation failed - please try again";
+      } else if (errorMessage.includes("network") || errorMessage.includes("chain")) {
+        errorMessage = "Network error - please check your connection";
+      } else if (errorMessage.includes("Unexpected error") || errorMessage.includes("Ue")) {
+        errorMessage = "Transaction failed - please check your wallet balance and try again";
       }
       
       return { success: false, error: errorMessage };
+    }
+  };
+
+  // ===== ADD checkWalletBalance FUNCTION =====
+  const checkWalletBalance = async (requiredAmount: number): Promise<{ sufficient: boolean; balance: string; required: string; error?: string }> => {
+    if (!account) {
+      return {
+        sufficient: false,
+        balance: "0",
+        required: requiredAmount.toString(),
+        error: "No wallet connected"
+      };
+    }
+
+    try {
+      const balanceResult = await readContract({
+        contract: getContract({
+          client,
+          chain: defineChain(polygon),
+          address: "0x0000000000000000000000000000000000001010"
+        }),
+        method: {
+          type: "function",
+          name: "balanceOf",
+          inputs: [{ type: "address", name: "owner" }],
+          outputs: [{ type: "uint256" }],
+          stateMutability: "view"
+        },
+        params: [account.address]
+      });
+
+      const balanceInPOL = Number(balanceResult) / 10**18;
+      const sufficient = balanceInPOL >= requiredAmount;
+
+      return {
+        sufficient,
+        balance: balanceInPOL.toFixed(4),
+        required: requiredAmount.toFixed(4)
+      };
+    } catch (err) {
+      console.error("Error checking wallet balance:", err);
+      return {
+        sufficient: false,
+        balance: "0",
+        required: requiredAmount.toString(),
+        error: "Failed to check balance"
+      };
     }
   };
 
@@ -371,24 +507,49 @@ export default function PlanB() {
     }
   };
 
-  // Main transaction handlers - Following Plan A pattern
+  // ===== UPDATE handleFirstTransaction WITH BETTER VALIDATION =====
   const handleFirstTransaction = async () => {
-    if (!account || !adjustedExchangeRate || !userData) return;
+    if (!account || !adjustedExchangeRate || !userData) {
+      setTransactionError("กรุณาเชื่อมต่อกระเป๋าและรอการโหลดข้อมูล");
+      return;
+    }
     
     setIsProcessingFirst(true);
     setTransactionError(null);
 
     try {
       const requiredPolAmount = calculateRequiredPolAmount();
-      if (requiredPolAmount === null) throw new Error("Unable to calculate required POL amount");
+      if (requiredPolAmount === null) {
+        throw new Error("ไม่สามารถคำนวณจำนวน POL ที่ต้องการได้");
+      }
+
+      console.log("Calculated required POL amount:", requiredPolAmount);
+
+      // Check wallet balance before proceeding
+      const balanceCheck = await checkWalletBalance(requiredPolAmount);
+      if (!balanceCheck.sufficient) {
+        throw new Error(`ยอดเงินในกระเป๋าไม่เพียงพอ\nคุณมี: ${balanceCheck.balance} POL\nต้องการ: ${balanceCheck.required} POL`);
+      }
 
       const requiredAmountWei = toWei(requiredPolAmount.toString());
+      console.log("Amount in wei:", requiredAmountWei.toString());
 
       // Execute first transaction to recipient
+      console.log("Executing transaction to:", RECIPIENT_ADDRESS);
       const firstTransaction = await executeTransaction(RECIPIENT_ADDRESS, requiredAmountWei);
       
       if (!firstTransaction.success) {
-        throw new Error(`First transaction failed: ${firstTransaction.error}`);
+        // More user-friendly error messages
+        let errorMessage = firstTransaction.error;
+        if (errorMessage.includes("insufficient funds")) {
+          errorMessage = `ยอดเงินไม่เพียงพอ\nคุณมี: ${balanceCheck.balance} POL\nต้องการ: ${balanceCheck.required} POL`;
+        } else if (errorMessage.includes("user rejected")) {
+          errorMessage = "คุณได้ปฏิเสธการทำรายการ";
+        } else if (errorMessage.includes("gas")) {
+          errorMessage = "เกิดข้อผิดพลาดในการคำนวณค่าธรรมเนียม กรุณาลองใหม่อีกครั้ง";
+        }
+        
+        throw new Error(`การทำรายการครั้งที่ 1 ล้มเหลว: ${errorMessage}`);
       }
       
       setFirstTxHash(firstTransaction.transactionHash!);
@@ -399,13 +560,14 @@ export default function PlanB() {
       setShowSecondConfirmationModal(true);
 
     } catch (err) {
-      console.error("First transaction failed:", err);
+      console.error("First transaction failed with details:", err);
       setTransactionError(`การทำรายการล้มเหลว: ${(err as Error).message}`);
     } finally {
       setIsProcessingFirst(false);
     }
   };
 
+  // ===== MODIFY handleSecondTransaction TO ADD KTDFI TRANSACTION =====
   const handleSecondTransaction = async () => {
     if (!account || !adjustedExchangeRate || !userData || !firstTxHash) return;
     
@@ -430,14 +592,113 @@ export default function PlanB() {
         }
       }
 
+      // Close second modal and open third modal for KTDFI
+      setShowSecondConfirmationModal(false);
+      setShowThirdConfirmationModal(true);
+
+    } catch (err) {
+      console.error("Second transaction failed:", err);
+      setTransactionError(`การทำรายการล้มเหลว: ${(err as Error).message}`);
+    } finally {
+      setIsProcessingSecond(false);
+    }
+  };
+
+  // ===== ADD NEW handleThirdTransaction FUNCTION =====
+  const handleThirdTransaction = async () => {
+    if (!account || !firstTxHash || !ktdfiSenderAccount) return;
+    
+    setIsProcessingThird(true);
+    setTransactionError(null);
+
+    try {
+      let thirdTransactionHash = "";
+
+      // Execute third transaction (KTDFI token transfer to D1 member)
+      const thirdTransaction = await executeKTDFITransaction(account.address, KTDFI_AMOUNT_D1_MEMBER, ktdfiSenderAccount, false);
+      
+      if (!thirdTransaction.success) {
+        console.warn('KTDFI transaction to member failed:', thirdTransaction.error);
+        setTransactionError(`การส่งเหรียญ KTDFI ให้สมาชิกล้มเหลว: ${thirdTransaction.error}. จะดำเนินการต่อไป`);
+      } else {
+        thirdTransactionHash = thirdTransaction.transactionHash!;
+        setThirdTxHash(thirdTransactionHash);
+        setTransactionStatus(prev => ({ ...prev, thirdTransaction: true }));
+      }
+
+      // Close third modal and open fourth modal for referrer bonus
+      setShowThirdConfirmationModal(false);
+      
+      // Check if user has a valid referrer for the fourth transaction
+      const referrerAddress = getValidReferrerAddress();
+      if (referrerAddress) {
+        setShowFourthConfirmationModal(true);
+      } else {
+        // If no referrer, skip to database update
+        await handleDatabaseUpdate(thirdTransactionHash, "");
+      }
+
+    } catch (err) {
+      console.error("Third transaction failed:", err);
+      setTransactionError(`การทำรายการล้มเหลว: ${(err as Error).message}`);
+    } finally {
+      setIsProcessingThird(false);
+    }
+  };
+  
+  // ===== ADD NEW handleFourthTransaction FUNCTION =====
+  const handleFourthTransaction = async () => {
+    if (!account || !ktdfiSenderAccount) return;
+    
+    setIsProcessingFourth(true);
+    setTransactionError(null);
+
+    try {
+      const referrerAddress = getValidReferrerAddress();
+      let fourthTransactionHash = "";
+      let fourthTransactionError = "";
+
+      if (referrerAddress) {
+        // Execute fourth transaction (KTDFI token transfer to referrer as bonus)
+        const fourthTransaction = await executeKTDFITransaction(referrerAddress, KTDFI_AMOUNT_D1_REFERRER, ktdfiSenderAccount, true);
+        
+        if (!fourthTransaction.success) {
+          fourthTransactionError = fourthTransaction.error || "Unknown error";
+          console.warn('KTDFI transaction to referrer failed:', fourthTransactionError);
+          setTransactionError(`การส่งเหรียญ KTDFI ให้ผู้แนะนำล้มเหลว: ${fourthTransactionError}. แต่จะบันทึกข้อมูลลงฐานข้อมูล`);
+        } else {
+          fourthTransactionHash = fourthTransaction.transactionHash!;
+          setFourthTxHash(fourthTransactionHash);
+          setTransactionStatus(prev => ({ ...prev, fourthTransaction: true }));
+        }
+      }
+
+      // Proceed to database update
+      await handleDatabaseUpdate(thirdTxHash, fourthTransactionHash);
+
+    } catch (err) {
+      console.error("Fourth transaction failed:", err);
+      setTransactionError(`การทำรายการล้มเหลว: ${(err as Error).message}`);
+    } finally {
+      setIsProcessingFourth(false);
+    }
+  };
+
+  // ===== ADD NEW handleDatabaseUpdate FUNCTION =====
+  const handleDatabaseUpdate = async (memberKtdfiTxHash: string, referrerKtdfiTxHash: string) => {
+    if (!account || !adjustedExchangeRate) return;
+
+    try {
       // Get current time
       const now = new Date();
       const formattedDate = now.toISOString();
 
-      // Prepare D1 data
+      const referrerAddress = getValidReferrerAddress();
+
+      // Prepare D1 data with both KTDFI transactions
       const newD1Data = {
         user_id: account.address,
-        rate_thb_pol: parseFloat(adjustedExchangeRate.toFixed(4)),
+        rate_thb_pol: parseFloat(adjustedExchangeRate?.toFixed(4) || "0"),
         append_pol: parseFloat(calculateRequiredPolAmount()?.toFixed(4) || "0"),
         append_pol_tx_hash: firstTxHash,
         append_pol_date_time: formattedDate,
@@ -445,8 +706,31 @@ export default function PlanB() {
           net_bonus_used: totalBonus * 0.05,
           referrer_transaction: referrerAddress ? {
             amount: MINIMUM_PAYMENT,
-            tx_hash: secondTransactionHash,
+            tx_hash: secondTxHash,
             date_time: formattedDate
+          } : null,
+          ktdfi_to_member: memberKtdfiTxHash ? {
+            amount: KTDFI_AMOUNT_D1_MEMBER,
+            tx_hash: memberKtdfiTxHash,
+            date_time: formattedDate,
+            sender: KTDFI_SENDER_ADDRESS,
+            type: "member_bonus"
+          } : null,
+          ktdfi_to_referrer: referrerAddress && referrerKtdfiTxHash ? {
+            amount: KTDFI_AMOUNT_D1_REFERRER,
+            tx_hash: referrerKtdfiTxHash,
+            date_time: formattedDate,
+            sender: KTDFI_SENDER_ADDRESS,
+            recipient: referrerAddress,
+            type: "referrer_bonus"
+          } : referrerAddress && !referrerKtdfiTxHash ? {
+            amount: KTDFI_AMOUNT_D1_REFERRER,
+            tx_hash: null,
+            date_time: formattedDate,
+            sender: KTDFI_SENDER_ADDRESS,
+            recipient: referrerAddress,
+            type: "referrer_bonus_failed",
+            error: transactionError || "Transaction failed"
           } : null,
           total_amount_thb: MEMBERSHIP_FEE_THB,
           timestamp: formattedDate
@@ -460,7 +744,7 @@ export default function PlanB() {
       if (dbResult && dbResult.user_id) {
         setD1Data(dbResult);
         setIsTransactionComplete(true);
-        setShowSecondConfirmationModal(false);
+        setShowFourthConfirmationModal(false);
         
         // Redirect to user page after successful completion
         router.push(`/plan-b/${account.address}`);
@@ -469,10 +753,82 @@ export default function PlanB() {
       }
 
     } catch (err) {
-      console.error("Second transaction or database update failed:", err);
-      setTransactionError(`การทำรายการล้มเหลว: ${(err as Error).message}`);
-    } finally {
-      setIsProcessingSecond(false);
+      console.error("Database update failed:", err);
+      setTransactionError(`การบันทึกข้อมูลล้มเหลว: ${(err as Error).message}`);
+    }
+  };
+
+  // ===== ADD handleCloseFourthModal FUNCTION =====
+  const handleCloseFourthModal = () => {
+    if (transactionStatus.fourthTransaction) {
+      return; // Don't allow closing if transaction is completed
+    }
+    setShowFourthConfirmationModal(false);
+    setTransactionError(null);
+  };
+
+  // ===== ADD THIS HELPER FUNCTION =====
+  const executeKTDFITransaction = async (to: string, amount: string, ktdfiSenderAccount: any, isReferrerBonus: boolean = false) => {
+    try {
+      if (!ktdfiSenderAccount) {
+        throw new Error("KTDFI sender account not initialized");
+      }
+
+      // Check KTDFI balance first
+      const ktdfiBalance = await readContract({
+        contract: getContract({
+          client,
+          chain: defineChain(polygon),
+          address: KTDFI_CONTRACT_ADDRESS
+        }),
+        method: {
+          type: "function",
+          name: "balanceOf",
+          inputs: [{ type: "address", name: "owner" }],
+          outputs: [{ type: "uint256" }],
+          stateMutability: "view"
+        },
+        params: [KTDFI_SENDER_ADDRESS]
+      });
+
+      const balanceInTokens = Number(ktdfiBalance) / 10**18;
+      const requiredAmount = Number(amount);
+      if (balanceInTokens < requiredAmount) {
+        throw new Error(`Insufficient KTDFI balance. Sender has ${balanceInTokens} KTDFI, but needs ${requiredAmount} KTDFI`);
+      }
+
+      console.log(`Sending ${amount} KTDFI from ${KTDFI_SENDER_ADDRESS} to ${to} ${isReferrerBonus ? '(Referrer Bonus)' : '(Member Bonus)'}`);
+
+      // KTDFI is an ERC-20 token
+      const transaction = prepareContractCall({
+        contract: getContract({
+          client,
+          chain: defineChain(polygon),
+          address: KTDFI_CONTRACT_ADDRESS
+        }),
+        method: {
+          type: "function",
+          name: "transfer",
+          inputs: [
+            { type: "address", name: "to" },
+            { type: "uint256", name: "value" }
+          ],
+          outputs: [{ type: "bool" }],
+          stateMutability: "nonpayable"
+        },
+        params: [to, toWei(amount)]
+      });
+
+      const { transactionHash } = await sendTransaction({
+        transaction,
+        account: ktdfiSenderAccount
+      });
+
+      console.log(`KTDFI transaction successful: ${transactionHash}`);
+      return { success: true, transactionHash, isReferrerBonus };
+    } catch (error) {
+      console.error("KTDFI transaction failed:", error);
+      return { success: false, error: (error as Error).message, isReferrerBonus };
     }
   };
 
@@ -490,6 +846,15 @@ export default function PlanB() {
       return; // Don't allow closing if transaction is completed
     }
     setShowSecondConfirmationModal(false);
+    setTransactionError(null);
+  };
+
+  // ===== ADD handleCloseThirdModal FUNCTION =====
+  const handleCloseThirdModal = () => {
+    if (transactionStatus.thirdTransaction) {
+      return; // Don't allow closing if transaction is completed
+    }
+    setShowThirdConfirmationModal(false);
     setTransactionError(null);
   };
 
@@ -517,7 +882,39 @@ export default function PlanB() {
     }
   };
 
-  const handleJoinPlanB = () => {
+  // ===== UPDATE THE JOIN BUTTON TO CHECK CONDITIONS =====
+  const handleJoinPlanB = async () => {
+    if (!account) {
+      setTransactionError("กรุณาเชื่อมต่อกระเป๋าก่อน");
+      return;
+    }
+
+    // Check if user already has D1
+    if (isPlanB) {
+      setTransactionError("ท่านเป็นสมาชิก Plan B D1 เรียบร้อยแล้ว");
+      return;
+    }
+
+    // Check basic requirements
+    if (!adjustedExchangeRate) {
+      setTransactionError("กำลังโหลดอัตราแลกเปลี่ยน กรุณารอสักครู่...");
+      return;
+    }
+
+    const requiredPolAmount = calculateRequiredPolAmount();
+    if (!requiredPolAmount) {
+      setTransactionError("ไม่สามารถคำนวณยอดเงินที่ต้องการได้");
+      return;
+    }
+
+    // Check wallet balance before showing modal
+    const balanceCheck = await checkWalletBalance(requiredPolAmount);
+    if (!balanceCheck.sufficient) {
+      setTransactionError(`ยอดเงินไม่เพียงพอ\nคุณมี: ${balanceCheck.balance} POL\nต้องการ: ${balanceCheck.required} POL`);
+      return;
+    }
+
+    // All checks passed, show modal
     setShowFirstConfirmationModal(true);
     fetchBonusData();
   };
@@ -528,10 +925,22 @@ export default function PlanB() {
     return /^0x[a-fA-F0-9]{40}$/.test(address);
   };
 
+  // ===== UPDATE getValidReferrerAddress TO BE MORE ROBUST =====
   const getValidReferrerAddress = (): string | null => {
     if (!userData || !userData.referrer_id) return null;
+    
     const referrerAddress = userData.referrer_id.trim();
-    return isValidEthereumAddress(referrerAddress) ? referrerAddress : null;
+    
+    // Check if it's a valid Ethereum address
+    if (!isValidEthereumAddress(referrerAddress)) return null;
+    
+    // Check if referrer is not the same as the user
+    if (account && referrerAddress.toLowerCase() === account.address.toLowerCase()) {
+      console.warn('Referrer address is the same as user address');
+      return null;
+    }
+    
+    return referrerAddress;
   };
 
   const formatNumber = (value: number | string | null | undefined): string => {
@@ -605,15 +1014,32 @@ export default function PlanB() {
               PR by: {formatAddressForDisplay(userData.referrer_id)}<br />
             </div>
 
+            {/* Join Button Section */}
             {!isPlanB && userData && (
               <div className="w-full mt-6">
                 <button
                   onClick={handleJoinPlanB}
-                  className="w-full py-3 px-6 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors"
-                  disabled={!account}
+                  className="w-full py-3 px-6 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed"
+                  disabled={!account || loading || rateLoading}
                 >
-                  {!account ? "กรุณาเชื่อมต่อกระเป๋า" : "ยืนยันเข้าร่วม Plan B D1"}
+                  {!account ? "กรุณาเชื่อมต่อกระเป๋า" : 
+                  loading || rateLoading ? "กำลังโหลดข้อมูล..." : 
+                  "ยืนยันเข้าร่วม Plan B D1"}
                 </button>
+                
+                {/* Error display for join button */}
+                {transactionError && !showFirstConfirmationModal && (
+                  <div className="mt-3 p-2 bg-red-900 border border-red-400 rounded-lg">
+                    <p className="text-red-300 text-xs">
+                      {transactionError.split('\n').map((line, index) => (
+                        <React.Fragment key={index}>
+                          {line}
+                          {index < transactionError.split('\n').length - 1 && <br />}
+                        </React.Fragment>
+                      ))}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -680,10 +1106,18 @@ export default function PlanB() {
                 </p>
               )}
 
+              {/* Error display in modal */}
               {transactionError && (
-                <p className="mt-3 text-red-400 text-sm">
-                  {transactionError}
-                </p>
+                <div className="mt-3 p-2 bg-red-900 border border-red-400 rounded-lg">
+                  <p className="text-red-300 text-xs">
+                    {transactionError.split('\n').map((line, index) => (
+                      <React.Fragment key={index}>
+                        {line}
+                        {index < transactionError.split('\n').length - 1 && <br />}
+                      </React.Fragment>
+                    ))}
+                  </p>
+                </div>
               )}
             </div>
             <div className="flex flex-col gap-3">
@@ -758,7 +1192,169 @@ export default function PlanB() {
                 onClick={handleCloseSecondModal}
                 disabled={isProcessingSecond || transactionStatus.secondTransaction}
               >
-                {transactionStatus.secondTransaction ? 'เสร็จสิ้น' : 'ยกเลิก'}
+                {transactionStatus.secondTransaction ? 'ดำเนินการต่อ' : 'ยกเลิก'}
+              </button>
+            </div>
+          </div>
+        </ConfirmModal>
+      )}
+
+      {/* Third Confirmation Modal for KTDFI */}
+      {showThirdConfirmationModal && (
+        <ConfirmModal 
+          onClose={handleCloseThirdModal}
+          disableClose={isProcessingThird || transactionStatus.thirdTransaction}
+        >
+          <div className="p-6 bg-gray-900 rounded-lg border border-gray-700 max-w-md">
+            <h3 className="text-xl font-bold mb-4 text-center">รับเหรียญ KTDFI สำหรับ Plan B D1</h3>
+            <div className="mb-6 text-center">
+              <div className="mb-4 p-3 bg-purple-800 rounded-lg">
+                <p className="text-lg font-bold text-white">ยินดีต้อนรับสู่ Plan B D1</p>
+                <p className="text-yellow-500 text-[22px] font-bold">
+                  {MEMBERSHIP_FEE_THB} THB
+                </p>
+                <p className="text-purple-300 text-lg font-bold">
+                  โบนัสสำหรับท่าน: 10,000 KTDFI
+                </p>
+                {getValidReferrerAddress() && (
+                  <p className="text-green-300 text-md font-bold mt-2">
+                    โบนัสสำหรับผู้แนะนำ: 10,000 KTDFI
+                  </p>
+                )}
+              </div>
+              <p className="text-[18px] text-gray-200">
+                ขอแสดงความยินดีที่เข้าร่วม Plan B D1!<br />
+                คุณจะได้รับเหรียญ KTDFI
+                <span className="text-yellow-500 text-[22px] font-bold">
+                  <br />10,000 KTDFI
+                </span>
+                <p className="text-[16px] mt-2 text-gray-200">Welcome Bonus for D1 Members</p>
+              </p>
+              <div className="mt-4 p-3 bg-purple-900 border border-purple-400 rounded-lg">
+                <p className="text-sm text-purple-200">
+                  เหรียญ KTDFI จะถูกโอนจาก<br />
+                  <span className="text-purple-300">{KTDFI_SENDER_ADDRESS.slice(0, 6)}...{KTDFI_SENDER_ADDRESS.slice(-4)}</span>
+                  <br />ไปยังกระเป๋าของคุณ
+                </p>
+              </div>
+              {!ktdfiSenderAccount && (
+                <p className="text-sm text-red-400 mt-2">
+                  ⚠️ ระบบส่งเหรียญยังไม่พร้อมใช้งาน
+                </p>
+              )}
+              <p className="text-sm text-green-400 mt-4">
+                ✅ การชำระค่าสมาชิกสำเร็จแล้ว
+              </p>
+              {transactionError && (
+                <p className="mt-3 text-red-400 text-sm">
+                  {transactionError}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-col gap-3">
+              <button
+                className={`px-6 py-3 rounded-lg font-medium text-[17px] ${
+                  isProcessingThird || !ktdfiSenderAccount ? "bg-gray-600 cursor-not-allowed" : "bg-purple-600 hover:bg-purple-700 cursor-pointer"
+                }`}
+                onClick={handleThirdTransaction}
+                disabled={isProcessingThird || !ktdfiSenderAccount}
+              >
+                {isProcessingThird ? 'กำลังส่งเหรียญ...' : 'รับเหรียญ KTDFI'}
+              </button>
+              <button
+                className="px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg cursor-pointer"
+                onClick={handleCloseThirdModal}
+                disabled={isProcessingThird || transactionStatus.thirdTransaction}
+              >
+                {transactionStatus.thirdTransaction ? 'ดำเนินการต่อ' : 'ข้าม'}
+              </button>
+            </div>
+          </div>
+        </ConfirmModal>
+      )}
+
+      {/* Fourth Confirmation Modal for Referrer Bonus */}
+      {showFourthConfirmationModal && (
+        <ConfirmModal 
+          onClose={handleCloseFourthModal}
+          disableClose={isProcessingFourth || transactionStatus.fourthTransaction}
+        >
+          <div className="p-6 bg-gray-900 rounded-lg border border-gray-700 max-w-md">
+            <h3 className="text-xl font-bold mb-4 text-center">โบนัสสำหรับผู้แนะนำ</h3>
+            <div className="mb-6 text-center">
+              <div className="mb-4 p-3 bg-green-800 rounded-lg">
+                <p className="text-lg font-bold text-white">ขอบคุณผู้แนะนำ!</p>
+                <p className="text-yellow-500 text-[22px] font-bold">
+                  โบนัส 10,000 KTDFI
+                </p>
+                <p className="text-green-300 text-lg font-bold">
+                  สำหรับผู้แนะนำของคุณ
+                </p>
+              </div>
+              
+              {userData?.referrer_id && (
+                <div className="mb-4 p-3 bg-gray-800 rounded-lg">
+                  <p className="text-sm text-gray-300">ผู้แนะนำ:</p>
+                  <p className="text-lg font-bold text-white">
+                    {formatAddressForDisplay(userData.referrer_id)}
+                  </p>
+                </div>
+              )}
+
+              <p className="text-[18px] text-gray-200">
+                เป็นเกียรติที่คุณได้เข้าร่วม Plan B D1<br />
+                ผู้แนะนำของคุณจะได้รับโบนัส
+                <span className="text-yellow-500 text-[22px] font-bold">
+                  <br />10,000 KTDFI
+                </span>
+                <p className="text-[16px] mt-2 text-gray-200">Referrer Bonus</p>
+              </p>
+
+              <div className="mt-4 p-3 bg-green-900 border border-green-400 rounded-lg">
+                <p className="text-sm text-green-200">
+                  เหรียญ KTDFI จะถูกโอนจาก<br />
+                  <span className="text-green-300">{KTDFI_SENDER_ADDRESS.slice(0, 6)}...{KTDFI_SENDER_ADDRESS.slice(-4)}</span>
+                  <br />ไปยังกระเป๋าผู้แนะนำ
+                </p>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                <p className="text-sm text-green-400">
+                  ✅ การชำระค่าสมาชิกสำเร็จแล้ว
+                </p>
+                <p className="text-sm text-green-400">
+                  ✅ คุณได้รับ 10,000 KTDFI แล้ว
+                </p>
+              </div>
+
+              {!ktdfiSenderAccount && (
+                <p className="text-sm text-red-400 mt-2">
+                  ⚠️ ระบบส่งเหรียญยังไม่พร้อมใช้งาน
+                </p>
+              )}
+
+              {transactionError && (
+                <p className="mt-3 text-red-400 text-sm">
+                  {transactionError}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-col gap-3">
+              <button
+                className={`px-6 py-3 rounded-lg font-medium text-[17px] ${
+                  isProcessingFourth || !ktdfiSenderAccount ? "bg-gray-600 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 cursor-pointer"
+                }`}
+                onClick={handleFourthTransaction}
+                disabled={isProcessingFourth || !ktdfiSenderAccount}
+              >
+                {isProcessingFourth ? 'กำลังส่งโบนัส...' : 'ส่งโบนัสให้ผู้แนะนำ'}
+              </button>
+              <button
+                className="px-6 py-3 bg-gray-600 hover:bg-gray-700 rounded-lg cursor-pointer"
+                onClick={handleCloseFourthModal}
+                disabled={isProcessingFourth || transactionStatus.fourthTransaction}
+              >
+                {transactionStatus.fourthTransaction ? 'เสร็จสิ้น' : 'ข้าม (บันทึกข้อมูล)'}
               </button>
             </div>
           </div>
