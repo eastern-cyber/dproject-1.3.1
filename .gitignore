@@ -39,3 +39,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# backup and temp files
+*.bak
+*.bak[0-9]*
+*.bak[0-9].*
+*.bak.txt
+*.swp
+*.swo
+*~
+
+# nested accidental copies
+/dproject-1.3.1/

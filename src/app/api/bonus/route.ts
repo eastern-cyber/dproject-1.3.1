@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
       } catch (error) {
         client.release();
         console.error('Error fetching user bonus data:', error);
+        console.error('Search query error:', error);
         return NextResponse.json(
           { error: 'Failed to fetch user bonus data' },
           { status: 500 }
@@ -41,32 +42,29 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Original admin dashboard functionality with pagination and search
     // Calculate offset for pagination
     const offset = (page - 1) * limit;
     
     // Build WHERE clause for search
     let whereClause = '';
-    // Replace line 50 and fix the type issues
-    const queryParams: (string | number)[] = [limit, offset];
-    let paramCount = 3;
+    let queryParams: any[] = [limit, offset];
+    let countParams: any[] = [];
 
     if (search) {
       whereClause = `
         WHERE (
-          b.user_id ILIKE $${paramCount} OR 
-          u.user_id ILIKE $${paramCount} OR 
-          u.token_id ILIKE $${paramCount} OR 
-          u.name ILIKE $${paramCount} OR 
-          u.email ILIKE $${paramCount}
+          b.user_id ILIKE $3 OR 
+          u.user_id ILIKE $3 OR 
+          u.token_id ILIKE $3 OR 
+          u.name ILIKE $3 OR 
+          u.email ILIKE $3
         )
       `;
       queryParams.push(`%${search}%`);
-      paramCount++;
+      countParams.push(`%${search}%`);
     }
 
     // Main query to get bonus data with user information
-    // Join on user_id since both tables have this column for wallet address
     const query = `
       SELECT 
         b.*,
@@ -90,9 +88,6 @@ export async function GET(request: NextRequest) {
       LEFT JOIN users u ON b.user_id = u.user_id
       ${whereClause}
     `;
-
-    // For count query, we only need the search parameter if it exists
-    const countParams = search ? [queryParams[2]] : [];
 
     const [result, countResult] = await Promise.all([
       client.query(query, queryParams),

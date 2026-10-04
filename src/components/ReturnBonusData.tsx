@@ -369,7 +369,7 @@ const ReturnBonusData: React.FC<Props> = ({ referrerId, setReferrerId, users, re
                             <tr className="bg-gray-900 text-[19px] font-bold">
                                 <th className="border border-gray-400 py-3 px-4 text-center">
                                     <p className="text-[19px] m-2 font-semibold">ส่วนแบ่งรายได้  Return Bonus</p>
-                                    <p className="text-[19px] m-2 font-semibold">100% Caring Bonus ของ Direct PR</p>
+                                    <p className="text-[19px] m-2 font-semibold">(POL)</p>
                                 </th>
                             </tr>
                             <tr>
@@ -379,35 +379,30 @@ const ReturnBonusData: React.FC<Props> = ({ referrerId, setReferrerId, users, re
                                         <span className="text-[24px] text-yellow-500 animate-blink">
                                             &nbsp;{returnBonusSummary.total}&nbsp;
                                         </span>{' '}
-                                        POL
                                     </p>
                                     <p className="text-[18px]">
                                          เก็บสะสม 25%{' '}
                                         <span className="text-[24px] text-yellow-500 animate-blink">
                                             &nbsp;{returnBonusSummary.returnKeep}&nbsp;
                                         </span>{' '}
-                                        POL
                                     </p>
                                     <p className="text-[18px]">
                                         ยอดรับ{' '}
                                         <span className="text-[24px] text-yellow-500 animate-blink">
                                             &nbsp;{returnBonusSummary.receivedTotal}&nbsp;
                                         </span>{' '}
-                                        POL
                                     </p>
                                     <p className="text-[18px]">
                                         รับแล้ว
                                         <span className="text-[24px] text-yellow-500 animate-blink">
                                             &nbsp;{returnBonusSummary.received}&nbsp;
                                         </span>{' '}
-                                        POL
                                     </p>
                                     <p className="text-[18px]">
                                          ยอดใหม่{' '}
                                         <span className="text-[24px] text-yellow-500 animate-blink">
                                             &nbsp;{returnBonusSummary.newAmount}&nbsp;
                                         </span>{' '}
-                                        POL
                                     </p>
                                 </th>
                             </tr>

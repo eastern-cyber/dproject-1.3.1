@@ -3,92 +3,96 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 
+// Debug: Check if DATABASE_URL is available
+console.log('DATABASE_URL available:', !!process.env.DATABASE_URL);
+if (process.env.DATABASE_URL) {
+  console.log('DATABASE_URL length:', process.env.DATABASE_URL.length);
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 });
 
+// Add connection error handling
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
+});
+
 export async function POST(request: NextRequest) {
+  console.log('POST /api/plan-b called');
+  
   try {
     const planBData = await request.json();
+    console.log('Received data:', planBData);
 
-    // Validate required fields
-    const requiredFields = ['user_id', 'pol', 'date_time', 'rate_thb_pol', 'cumulative_pol', 'append_pol', 'append_tx_hash'];
-    for (const field of requiredFields) {
-      if (!planBData[field]) {
-        return NextResponse.json(
-          { error: `Missing required field: ${field}` },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Insert into plan_b table
-    const query = `
-      INSERT INTO plan_b (
-        user_id, pol, date_time, link_ipfs, rate_thb_pol, 
-        cumulative_pol, append_pol, append_tx_hash,
-        pr_pol, pr_pol_tx_hash, pr_pol_date_time
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      RETURNING *
-    `;
-
-    const values = [
-      planBData.user_id,
-      planBData.pol,
-      planBData.date_time,
-      planBData.link_ipfs || null,
-      planBData.rate_thb_pol,
-      planBData.cumulative_pol,
-      planBData.append_pol,
-      planBData.append_tx_hash,
-      planBData.pr_pol || 0,
-      planBData.pr_pol_tx_hash || null,
-      planBData.pr_pol_date_time || null,
-    ];
-
-    const client = await pool.connect();
-    try {
-      const result = await client.query(query, values);
-      return NextResponse.json(result.rows[0]);
-    } finally {
-      client.release();
-    }
-  } catch (error) {
-    console.error('Database error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const user_id = searchParams.get('user_id');
-
-    if (!user_id) {
+    // Validate only the absolutely required field
+    if (!planBData.user_id) {
+      console.log('Missing user_id');
       return NextResponse.json(
-        { error: 'User ID is required' },
+        { error: 'Missing required field: user_id' },
         { status: 400 }
       );
     }
 
-    const query = 'SELECT * FROM plan_b WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1';
-    const client = await pool.connect();
-    
-    try {
-      const result = await client.query(query, [user_id]);
-      
-      if (result.rows.length === 0) {
-        return NextResponse.json(
-          { error: 'Plan B data not found' },
-          { status: 404 }
-        );
-      }
+    // Insert into plan_b table with default values for all NOT NULL fields
+    const query = `
+      INSERT INTO plan_b (
+        user_id, 
+        rate_thb_pol, 
+        cumulative_pol, 
+        append_pol,
+        append_pol_tx_hash,
+        append_pol_date_time,
+        pr_pol,
+        pr_pol_tx_hash,
+        pr_pol_date_time,
+        link_ipfs,
+        remark,
+        d1,
+        d2,
+        d3,
+        d4,
+        d5,
+        d6,
+        d7
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      RETURNING *
+    `;
 
+    const currentTime = new Date().toISOString();
+    
+    const values = [
+      planBData.user_id,
+      planBData.rate_thb_pol || 0,
+      planBData.cumulative_pol || 0,
+      planBData.append_pol || 0,
+      planBData.append_tx_hash || '0x0000000000000000000000000000000000000000000000000000000000000000',
+      planBData.append_pol_date_time || currentTime,
+      planBData.pr_pol || 0,
+      planBData.pr_pol_tx_hash || '0x0000000000000000000000000000000000000000000000000000000000000000',
+      planBData.pr_pol_date_time || currentTime,
+      planBData.link_ipfs || '',
+      planBData.remark || '{}',
+      planBData.d1 || 1, // Set d1 to 1 as requested
+      planBData.d2 || 0,
+      planBData.d3 || 0,
+      planBData.d4 || 0,
+      planBData.d5 || 0,
+      planBData.d6 || 0,
+      planBData.d7 || 0
+    ];
+
+    console.log('Executing query with values:', values);
+
+    const client = await pool.connect();
+    try {
+      const result = await client.query(query, values);
+      console.log('Database insert successful:', result.rows[0]);
       return NextResponse.json(result.rows[0]);
+    } catch (dbError) {
+      console.error('Database query error:', dbError);
+      throw dbError;
     } finally {
       client.release();
     }
