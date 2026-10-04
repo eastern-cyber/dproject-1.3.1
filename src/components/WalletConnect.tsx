@@ -11,7 +11,7 @@ import { createWallet } from "thirdweb/wallets";
 const WalletConnect: React.FC = () => {
     const wallets = [
         createWallet("io.metamask"),
-        createWallet("com.phantom"),
+        createWallet("app.phantom"),          // Fixed ID
         createWallet("com.trustwallet.app"),
         createWallet("com.bitget.web3"),
         createWallet("com.tokenpocket"),
