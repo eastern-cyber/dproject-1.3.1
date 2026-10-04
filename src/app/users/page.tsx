@@ -370,7 +370,7 @@ export default function AdminDashboard() {
               <span className="text-sm text-gray-600 dark:text-gray-300">Show:</span>
               <span className="font-medium">{filteredUsers.length} users</span>
             </div>
-            {/* <button
+            <button
               onClick={downloadCSV}
               disabled={downloading || users.length === 0}
               className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
@@ -391,7 +391,7 @@ export default function AdminDashboard() {
                   Download CSV
                 </>
               )}
-            </button> */}
+            </button>
           </div>
         </div>
       </div>
